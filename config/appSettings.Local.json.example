@@ -1,0 +1,32 @@
+{
+  "Weaviate": {
+    "Url": "http://localhost:8080",
+    "ApiKey": "your-weaviate-api-key-here",
+    "DefaultVectorizer": "text2vec-openai"
+  },
+  "OpenAI": {
+    "ApiKey": "your-openai-api-key-here"
+  },
+  "ApplicationInsights": {
+    "ConnectionString": ""
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "System": "Warning"
+      }
+    }
+  },
+  "Environment": {
+    "Value": "Local",
+    "ApplicationId": "weaviate-client-local"
+  },
+  "KeyVault": {
+    "VaultUri": "",
+    "ManagedIdentityClientId": "",
+    "TenantId": "",
+    "Enabled": false
+  }
+}
