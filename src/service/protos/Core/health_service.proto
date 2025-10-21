@@ -3,7 +3,7 @@ syntax = "proto3";
 package vectordb.core.v1;
 option csharp_namespace = "VectorDB.Contracts.Core.V1";
 
-import "Protos/Core/health_messages.proto";
+import "Core/health_messages.proto";
 
 // Service for health check operations
 service HealthService {

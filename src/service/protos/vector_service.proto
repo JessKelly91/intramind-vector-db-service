@@ -3,11 +3,15 @@ syntax = "proto3";
 package vectordb;
 option csharp_namespace = "VectorService";
 
-// Import all domain services
-import "Protos/Core/collections_service.proto";
-import "Protos/Core/documents_service.proto";
-import "Protos/Core/search_service.proto";
-import "Protos/Core/health_service.proto";
+// Import all domain services and messages
+import "Core/collections_messages.proto";
+import "Core/collections_service.proto";
+import "Core/documents_messages.proto";
+import "Core/documents_service.proto";
+import "Core/search_messages.proto";
+import "Core/search_service.proto";
+import "Core/health_messages.proto";
+import "Core/health_service.proto";
 
 // Main Vector Database Service
 // This service composes all domain services into a single unified service

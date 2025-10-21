@@ -3,7 +3,7 @@ syntax = "proto3";
 package vectordb.core.v1;
 option csharp_namespace = "VectorDB.Contracts.Core.V1";
 
-import "Protos/Core/collections_messages.proto";
+import "Core/collections_messages.proto";
 
 // Service for collection management operations
 service CollectionService {

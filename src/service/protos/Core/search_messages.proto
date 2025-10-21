@@ -3,8 +3,6 @@ syntax = "proto3";
 package vectordb.core.v1;
 option csharp_namespace = "VectorDB.Contracts.Core.V1";
 
-import "google/protobuf/timestamp.proto";
-
 // ============================================================================
 // Search Operations Messages
 // ============================================================================
