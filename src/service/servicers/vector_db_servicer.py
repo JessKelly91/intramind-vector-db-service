@@ -19,7 +19,13 @@ except ImportError:
 from ...weaviate_client import WeaviateClient, Document
 from ...weaviate_client.collections import CollectionManager
 from ...weaviate_client.queries import QueryManager
-from ...weaviate_client.telemetry import get_telemetry_client
+
+# Telemetry is optional (requires Azure opencensus libraries)
+try:
+    from ...weaviate_client.telemetry import get_telemetry_client
+except ImportError:
+    get_telemetry_client = None
+    print("Info: Azure telemetry not available (opencensus not installed)")
 
 
 class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector_service_pb2_grpc else object):
@@ -31,7 +37,7 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
         """Initialize the servicer with Weaviate connection."""
         self.weaviate_client = WeaviateClient()
         self.weaviate_client.connect()
-        self.telemetry = get_telemetry_client()
+        self.telemetry = get_telemetry_client() if get_telemetry_client else None
         print("VectorDBServicer initialized")
 
     def InsertVector(self, request, context):
@@ -60,7 +66,7 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
                 )
 
             return vector_service_pb2.VectorResponse(
-                id=doc_id,
+                id=str(doc_id),  # Convert UUID to string
                 content=request.content,
                 metadata=request.metadata,
                 created_at=datetime.now().isoformat(),
@@ -110,7 +116,7 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
                 )
 
             return vector_service_pb2.BatchResponse(
-                ids=ids,
+                ids=[str(id) for id in ids],  # Convert UUIDs to strings
                 total_inserted=len(ids),
                 total_failed=0,
                 success=True
@@ -316,7 +322,7 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
             collection_manager.create_collection(
                 name=request.collection_name,
                 description=request.description,
-                vectorizer=request.vectorizer if request.vectorizer else "text2vec-openai"
+                vectorizer=request.vectorizer if request.vectorizer else "text2vec-transformers"
             )
 
             if self.telemetry:

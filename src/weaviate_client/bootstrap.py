@@ -2,7 +2,7 @@
 Bootstrap module for initializing application components.
 
 This module handles initialization of:
-- Configuration loading (with KeyVault integration)
+- Configuration loading (from JSON files and environment variables)
 - Application Insights telemetry
 - Logging setup
 """
@@ -13,7 +13,6 @@ from .telemetry import initialize_telemetry, get_telemetry_client
 
 
 def initialize_application(
-    enable_keyvault: Optional[bool] = None,
     enable_telemetry: bool = True
 ) -> dict:
     """
@@ -22,7 +21,6 @@ def initialize_application(
     This should be called once at application startup.
 
     Args:
-        enable_keyvault: Override KeyVault enable setting (None = use config)
         enable_telemetry: Whether to initialize Application Insights telemetry
 
     Returns:
@@ -37,8 +35,8 @@ def initialize_application(
     print("Initializing Application")
     print("=" * 60)
 
-    # Load configuration (with KeyVault if enabled)
-    settings = get_settings(enable_keyvault=enable_keyvault)
+    # Load configuration from JSON files and environment variables
+    settings = get_settings()
     environment = settings.environment_value
     print(f"Environment: {environment}")
 

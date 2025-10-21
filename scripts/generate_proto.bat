@@ -13,6 +13,9 @@ python -m grpc_tools.protoc ^
 
 if %ERRORLEVEL% EQU 0 (
     echo.
+    echo Fixing imports in generated files...
+    python -c "import sys; f=open('src/service/protos/vector_service_pb2_grpc.py','r'); content=f.read(); f.close(); content=content.replace('import vector_service_pb2 as','from . import vector_service_pb2 as'); f=open('src/service/protos/vector_service_pb2_grpc.py','w'); f.write(content); f.close(); print('Fixed imports')"
+    echo.
     echo Success! Generated files:
     echo   - src/service/protos/vector_service_pb2.py
     echo   - src/service/protos/vector_service_pb2_grpc.py

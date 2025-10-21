@@ -18,8 +18,9 @@ ai-vector-db-practice/
 │   └── example.py              # Example usage script
 ├── tests/                      # Unit tests (empty)
 ├── config/
-│   ├── appSettings.json        # Base configuration (for Azure/Production)
-│   └── appSettings.Local.json.example  # Local settings template
+│   ├── appSettings.json        # Base configuration (non-secret settings)
+│   └── env.example             # Environment variables template
+├── .env                        # Local environment variables (gitignored, create from template)
 ├── .gitignore
 ├── requirements.txt
 └── README.md
@@ -49,47 +50,105 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 3. Install dependencies:
 ```bash
 pip install -r requirements.txt
+
+# Optional: If using Azure Application Insights for telemetry
+pip install -r requirements-azure.txt
 ```
 
-4. Configure local settings:
+4. Configure local environment variables:
 ```bash
-cd config
-cp appSettings.Local.json.example appSettings.Local.json
+# Copy the environment template
+cp config/env.example .env
 ```
 
-Edit `appSettings.Local.json` with your local configuration:
-```json
-{
-  "Weaviate": {
-    "Url": "http://localhost:8080",
-    "ApiKey": "your-weaviate-api-key-here",
-    "DefaultVectorizer": "text2vec-openai"
-  },
-  "OpenAI": {
-    "ApiKey": "your-openai-api-key-here"
-  },
-  "Logging": {
-    "Level": "INFO"
-  }
-}
-```
-
-**Note**: `appSettings.Local.json` is gitignored and will not be committed. In production/Azure, configure `appSettings.json` with values from Azure KeyVault or Pipeline Library variables.
-
-### Running Weaviate Locally
-
-Using Docker:
+Edit `.env` with your local configuration:
 ```bash
-docker run -d \
-  -p 8080:8080 \
-  -e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
-  -e PERSISTENCE_DATA_PATH=/var/lib/weaviate \
-  -e ENABLE_MODULES=text2vec-openai \
-  -e OPENAI_APIKEY=your_openai_key \
-  semitechnologies/weaviate:latest
+# Environment
+ENVIRONMENT=Local
+
+# Weaviate Configuration
+WEAVIATE_URL=http://localhost:8080
+WEAVIATE_KEY=  # Leave empty for local docker-compose (anonymous access enabled)
+
+# OpenAI Configuration (OPTIONAL - only needed if you want to use OpenAI embeddings)
+OPENAI_API_KEY=  # Leave empty to use free local vectorization
+
+# Application Insights (optional)
+APPINSIGHTS_CONNECTION_STRING=
+
+# Application ID (optional)
+APPLICATION_ID=weaviate-client-local
 ```
 
-Or use Docker Compose for a more complete setup.
+**For local development with docker-compose:** You can leave `WEAVIATE_KEY` and `OPENAI_API_KEY` empty - the free local vectorizer will work without any API keys!
+
+**Note**: `.env` is gitignored and will not be committed. For GitHub Actions/production, configure these as GitHub Secrets.
+
+### Running Weaviate Locally with Docker Compose (Recommended)
+
+This project includes a `docker-compose.yml` file configured with **free local vectorization** (no API keys required).
+
+#### Quick Start
+
+1. **Start Weaviate**:
+```bash
+docker-compose up -d
+```
+
+2. **Check status**:
+```bash
+docker-compose ps
+```
+
+3. **View logs**:
+```bash
+docker-compose logs -f weaviate
+```
+
+4. **Stop Weaviate**:
+```bash
+docker-compose down
+```
+
+5. **Stop and remove data** (fresh start):
+```bash
+docker-compose down -v
+```
+
+**Weaviate will be available at:**
+- REST API: `http://localhost:8080`
+- gRPC API: `http://localhost:50051`
+- Health check: `http://localhost:8080/v1/.well-known/ready`
+
+**Data Persistence:**
+- Data is stored in a Docker volume named `weaviate_data`
+- Data persists between container restarts
+- To wipe all data: `docker-compose down -v`
+
+#### Vectorization Options
+
+**Default: Free Local Vectorization (text2vec-transformers)** ✅ **Recommended for Development**
+- ✅ **Completely free** - no API keys or costs
+- ✅ **Works offline** - runs entirely on your machine
+- ✅ **Pre-configured** - works out of the box
+- Uses `sentence-transformers/all-MiniLM-L6-v2` model
+- Good quality embeddings for most use cases
+- Trade-off: Slower than cloud APIs, uses more local resources
+
+**Optional: OpenAI Embeddings** 💰 **Requires Paid API Key**
+- Higher quality embeddings
+- Faster processing (cloud-based)
+- Costs money (~$0.0001 per 1K tokens for text-embedding-3-small)
+
+To enable OpenAI:
+1. Get an API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+2. In `docker-compose.yml`, uncomment the `OPENAI_APIKEY` line:
+   ```yaml
+   OPENAI_APIKEY: ${OPENAI_API_KEY:-}
+   ```
+3. Add to `ENABLE_MODULES`: `'text2vec-transformers,text2vec-openai'`
+4. Set `OPENAI_API_KEY` in your `.env` file
+5. Restart: `docker-compose down && docker-compose up -d`
 
 ## Usage
 
@@ -145,16 +204,30 @@ with WeaviateClient() as client:
 
 ## Configuration
 
-The project uses a two-tier configuration system:
+The project uses a **production-like two-tier configuration system** following [12-factor app methodology](https://12factor.net/config):
 
-### Local Development
-- Create `config/appSettings.Local.json` (gitignored) with your local settings
-- This file overrides base settings in `appSettings.json`
+### 1. Base Configuration (`appSettings.json`)
+- Contains **non-secret configuration only** (logging levels, feature flags, etc.)
+- Checked into source control
+- Environment-specific values are left empty and provided via environment variables
 
-### Production/Azure
-- `appSettings.json` contains base configuration
-- Populate with Azure KeyVault secrets or Azure Pipeline Library variables
-- Can be updated during deployment pipeline
+### 2. Environment Variables (Primary Configuration Source)
+
+**Local Development:**
+- Create a `.env` file in the project root (gitignored)
+- Copy from `config/env.example` template
+- Contains your local API keys and secrets
+- Automatically loaded via `python-dotenv`
+
+**Production/GitHub Actions:**
+- Configure secrets in GitHub repository settings (Settings → Secrets and variables → Actions)
+- GitHub automatically exposes secrets as environment variables in workflows
+- Required variables:
+  - `WEAVIATE_URL`
+  - `WEAVIATE_KEY`
+  - `OPENAI_API_KEY`
+  - `ENVIRONMENT`
+  - `APPINSIGHTS_CONNECTION_STRING` (optional)
 
 ### Accessing Configuration
 
@@ -167,6 +240,38 @@ api_key = settings.weaviate_api_key
 
 # Or use dot notation
 custom_value = settings.get('CustomSection.CustomKey', 'default_value')
+```
+
+### GitHub Actions Example
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Run application
+        env:
+          WEAVIATE_URL: ${{ secrets.WEAVIATE_URL }}
+          WEAVIATE_KEY: ${{ secrets.WEAVIATE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ENVIRONMENT: Production
+        run: python scripts/example.py
 ```
 
 ## Development

@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any
+import json
 from .models import Document, SearchResult
 
 
@@ -31,7 +32,7 @@ class QueryManager:
             result = self.collection.data.insert(
                 properties={
                     "content": document.content,
-                    "metadata": document.metadata,
+                    "metadata": json.dumps(document.metadata) if document.metadata else "{}",
                     "created_at": document.created_at
                 }
             )
@@ -58,7 +59,7 @@ class QueryManager:
                     uuid = batch.add_object(
                         properties={
                             "content": doc.content,
-                            "metadata": doc.metadata,
+                            "metadata": json.dumps(doc.metadata) if doc.metadata else "{}",
                             "created_at": doc.created_at
                         }
                     )
@@ -95,11 +96,15 @@ class QueryManager:
 
             results = []
             for obj in response.objects:
+                # Deserialize metadata from JSON string
+                metadata_str = obj.properties.get('metadata', '{}')
+                metadata = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
+                
                 results.append(SearchResult(
                     id=str(obj.uuid),
                     content=obj.properties.get('content', ''),
                     score=obj.metadata.score if hasattr(obj.metadata, 'score') else None,
-                    metadata=obj.properties.get('metadata', {})
+                    metadata=metadata
                 ))
 
             return results
@@ -120,10 +125,14 @@ class QueryManager:
         try:
             obj = self.collection.query.fetch_object_by_id(object_id)
             if obj:
+                # Deserialize metadata from JSON string
+                metadata_str = obj.properties.get('metadata', '{}')
+                metadata = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
+                
                 return Document(
                     id=str(obj.uuid),
                     content=obj.properties.get('content', ''),
-                    metadata=obj.properties.get('metadata', {}),
+                    metadata=metadata,
                     created_at=obj.properties.get('created_at')
                 )
             return None

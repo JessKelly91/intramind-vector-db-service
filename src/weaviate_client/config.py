@@ -1,34 +1,46 @@
 import json
+import os
 from pathlib import Path
 from typing import Optional, Dict, Any
+from dotenv import load_dotenv
 
 
 class Settings:
     """
-    Configuration manager that reads from appSettings.json files.
+    Configuration manager that reads from appSettings.json and environment variables.
 
-    Loading order (later files override earlier ones):
-    1. appSettings.json - Base settings (populated by Azure KeyVault/Pipeline variables)
-    2. appSettings.Local.json - Local development overrides (gitignored)
-    3. KeyVault secrets - Resolves ${VARIABLE} placeholders if enabled
+    Production-like loading order (later sources override earlier ones):
+    1. appSettings.json - Base configuration (non-secret settings only)
+    2. Environment variables - Primary configuration source (from .env file or GitHub Secrets)
+    
+    Following 12-factor app methodology: https://12factor.net/config
     """
 
-    def __init__(self, enable_keyvault: Optional[bool] = None):
+    def __init__(self):
         """
-        Initialize settings from JSON configuration files.
-
-        Args:
-            enable_keyvault: Override KeyVault enable setting (useful for testing)
+        Initialize settings from JSON configuration files and environment variables.
         """
         self._settings: Dict[str, Any] = {}
-        self._keyvault_override = enable_keyvault
+        self._load_dotenv()
         self._load_settings()
 
+    def _load_dotenv(self):
+        """Load environment variables from .env file if it exists."""
+        project_root = Path(__file__).parent.parent.parent
+        dotenv_path = project_root / '.env'
+        
+        if dotenv_path.exists():
+            load_dotenv(dotenv_path)
+            print(f"Loaded environment variables from {dotenv_path}")
+        else:
+            # Still call load_dotenv to pick up system environment variables
+            load_dotenv()
+
     def _load_settings(self):
-        """Load settings from JSON files."""
+        """Load settings from JSON base configuration file."""
         project_root = Path(__file__).parent.parent.parent
 
-        # Load base settings (for production/pipeline)
+        # Load base settings
         base_settings_path = project_root / 'config' / 'appSettings.json'
         if base_settings_path.exists():
             with open(base_settings_path, 'r') as f:
@@ -37,55 +49,39 @@ class Settings:
             print(f"Warning: Base settings file not found at {base_settings_path}")
             self._settings = {}
 
-        # Load local settings (overrides for local development)
-        local_settings_path = project_root / 'config' / 'appSettings.Local.json'
-        if local_settings_path.exists():
-            with open(local_settings_path, 'r') as f:
-                local_settings = json.load(f)
-                self._merge_settings(local_settings)
-            print(f"Loaded local settings from {local_settings_path}")
+        # Override settings with environment variables (primary configuration source)
+        self._apply_environment_overrides()
 
-        # Resolve KeyVault placeholders if enabled
-        keyvault_enabled = self._keyvault_override if self._keyvault_override is not None else self._settings.get('KeyVault', {}).get('Enabled', False)
-        if keyvault_enabled:
-            self._resolve_keyvault_secrets()
+    def _apply_environment_overrides(self):
+        """Override settings with environment variables if they exist."""
+        env_mappings = {
+            'WEAVIATE_URL': 'Weaviate.Url',
+            'WEAVIATE_KEY': 'Weaviate.ApiKey',
+            'OPENAI_API_KEY': 'OpenAI.ApiKey',
+            'APPINSIGHTS_CONNECTION_STRING': 'ApplicationInsights.ConnectionString',
+            'ENVIRONMENT': 'Environment.Value',
+            'APPLICATION_ID': 'Environment.ApplicationId',
+        }
 
-    def _resolve_keyvault_secrets(self):
-        """Resolve ${VARIABLE} placeholders using Azure KeyVault."""
-        try:
-            from .keyvault_client import KeyVaultClient
+        for env_var, setting_path in env_mappings.items():
+            env_value = os.getenv(env_var)
+            if env_value:
+                self._set_nested_value(setting_path, env_value)
+                print(f"Applied environment override: {env_var}")
 
-            keyvault_config = self._settings.get('KeyVault', {})
-            vault_uri = keyvault_config.get('VaultUri')
-
-            if not vault_uri:
-                print("Warning: KeyVault enabled but VaultUri not configured")
-                return
-
-            print(f"Resolving KeyVault secrets from {vault_uri}")
-
-            with KeyVaultClient(
-                vault_uri=vault_uri,
-                managed_identity_client_id=keyvault_config.get('ManagedIdentityClientId'),
-                tenant_id=keyvault_config.get('TenantId')
-            ) as kv_client:
-                self._settings = kv_client.resolve_placeholders(self._settings)
-                print("KeyVault secrets resolved successfully")
-
-        except Exception as e:
-            print(f"Failed to resolve KeyVault secrets: {e}")
-            print("Continuing with placeholder values...")
-
-    def _merge_settings(self, new_settings: Dict[str, Any]):
-        """Recursively merge new settings into existing settings."""
-        def merge_dict(base: dict, updates: dict):
-            for key, value in updates.items():
-                if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-                    merge_dict(base[key], value)
-                else:
-                    base[key] = value
-
-        merge_dict(self._settings, new_settings)
+    def _set_nested_value(self, key_path: str, value: Any):
+        """Set a nested dictionary value using dot notation."""
+        keys = key_path.split('.')
+        current = self._settings
+        
+        # Navigate to the parent dictionary
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        
+        # Set the final value
+        current[keys[-1]] = value
 
     def get(self, key: str, default: Any = None) -> Any:
         """
@@ -162,26 +158,6 @@ class Settings:
         return self.get('Environment.ApplicationId')
 
     @property
-    def keyvault_enabled(self) -> bool:
-        """Check if KeyVault is enabled."""
-        return self.get('KeyVault.Enabled', False)
-
-    @property
-    def keyvault_uri(self) -> Optional[str]:
-        """Get KeyVault URI."""
-        return self.get('KeyVault.VaultUri')
-
-    @property
-    def keyvault_managed_identity_client_id(self) -> Optional[str]:
-        """Get KeyVault managed identity client ID."""
-        return self.get('KeyVault.ManagedIdentityClientId')
-
-    @property
-    def keyvault_tenant_id(self) -> Optional[str]:
-        """Get KeyVault tenant ID."""
-        return self.get('KeyVault.TenantId')
-
-    @property
     def all_settings(self) -> Dict[str, Any]:
         """Get all settings as dictionary."""
         return self._settings.copy()
@@ -191,13 +167,12 @@ class Settings:
 _settings_instance: Optional[Settings] = None
 
 
-def get_settings(reload: bool = False, enable_keyvault: Optional[bool] = None) -> Settings:
+def get_settings(reload: bool = False) -> Settings:
     """
     Get the global settings instance.
 
     Args:
-        reload: Force reload settings from files
-        enable_keyvault: Override KeyVault enable setting
+        reload: Force reload settings from files and environment variables
 
     Returns:
         Settings instance
@@ -205,6 +180,6 @@ def get_settings(reload: bool = False, enable_keyvault: Optional[bool] = None) -
     global _settings_instance
 
     if _settings_instance is None or reload:
-        _settings_instance = Settings(enable_keyvault=enable_keyvault)
+        _settings_instance = Settings()
 
     return _settings_instance

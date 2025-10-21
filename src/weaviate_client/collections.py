@@ -19,7 +19,7 @@ class CollectionManager:
         self,
         name: str,
         description: str = "",
-        vectorizer: str = "text2vec-openai"
+        vectorizer: str = "text2vec-transformers"
     ):
         """
         Create a new collection in Weaviate.
@@ -27,20 +27,31 @@ class CollectionManager:
         Args:
             name: Collection name
             description: Collection description
-            vectorizer: Vectorizer to use (default: text2vec-openai)
+            vectorizer: Vectorizer to use (default: text2vec-transformers)
+                       Options: 'text2vec-transformers', 'text2vec-openai', 'none'
         """
         try:
+            # Configure vectorizer based on the specified type
+            if vectorizer == "text2vec-transformers":
+                vectorizer_config = Configure.Vectorizer.text2vec_transformers()
+            elif vectorizer == "text2vec-openai":
+                vectorizer_config = Configure.Vectorizer.text2vec_openai()
+            elif vectorizer == "none":
+                vectorizer_config = Configure.Vectorizer.none()
+            else:
+                raise ValueError(f"Unsupported vectorizer: {vectorizer}")
+            
             self.client.collections.create(
                 name=name,
                 description=description,
-                vectorizer_config=Configure.Vectorizer.text2vec_openai(),
+                vectorizer_config=vectorizer_config,
                 properties=[
                     Property(name="content", data_type=DataType.TEXT),
-                    Property(name="metadata", data_type=DataType.OBJECT),
+                    Property(name="metadata", data_type=DataType.TEXT),  # Store as JSON string for flexibility
                     Property(name="created_at", data_type=DataType.DATE),
                 ]
             )
-            print(f"Collection '{name}' created successfully")
+            print(f"Collection '{name}' created successfully with {vectorizer} vectorizer")
         except Exception as e:
             print(f"Error creating collection: {e}")
             raise
