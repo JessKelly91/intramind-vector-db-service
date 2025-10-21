@@ -49,7 +49,7 @@ dotnet add package VectorDB.Contracts --version 1.0.0
 
 ```
 1. Development
-   └─→ Push to develop branch OR manually trigger
+   └─→ Push to dev branch OR manually trigger
        └─→ Publish to DEV (1.0.0-beta.X)
            └─→ Test on TestPyPI
            
@@ -80,7 +80,7 @@ Create these three environments:
 - **Protection rules**:
   - ⚠️ Required reviewers: None (auto-deploy for rapid testing)
   - ⚠️ Wait timer: 0 minutes
-  - ✅ Deployment branches: All branches OR specific (develop, dev)
+  - ✅ Deployment branches: All branches OR specific (dev)
 - **Secrets**:
   - `TESTPYPI_API_TOKEN` - From https://test.pypi.org/manage/account/token/
 
@@ -109,12 +109,12 @@ Create these three environments:
 
 ### Deploy to DEV
 
-**Automatic (on push to develop branch):**
+**Automatic (on push to dev branch):**
 ```bash
-git checkout develop
+git checkout dev
 git add .
 git commit -m "feat: add new feature"
-git push origin develop
+git push origin dev
 ```
 Workflow automatically triggers and publishes `1.0.0-beta.TIMESTAMP`
 
@@ -276,7 +276,7 @@ PROD
 ### Git Workflow Integration
 ```
 feature/new-feature
-└─→ develop (triggers DEV)
+└─→ dev (triggers DEV)
     └─→ main (manual UAT)
         └─→ tag v1.0.0 (manual PROD)
 ```

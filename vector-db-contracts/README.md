@@ -183,7 +183,7 @@ Pull requests automatically trigger:
 
 **DEV (Development Testing):**
 ```bash
-# Manual trigger or auto-deploy on push to develop branch
+# Manual trigger or auto-deploy on push to dev branch
 Actions → Publish to DEV → Run workflow
 # Publishes: vectordb-contracts==1.0.0-beta.1
 ```

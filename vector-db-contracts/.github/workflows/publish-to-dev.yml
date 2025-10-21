@@ -10,7 +10,6 @@ on:
         default: '1'
   push:
     branches:
-      - develop
       - dev
 
 jobs:
