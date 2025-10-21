@@ -1,0 +1,184 @@
+name: Publish to PROD
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Production version (leave empty to use VERSION file)'
+        required: false
+        type: string
+  release:
+    types: [published]
+
+jobs:
+  publish-python-prod:
+    name: Publish Python to PROD (PyPI)
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+      url: https://pypi.org/project/vectordb-contracts/
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Read production version
+      id: version
+      working-directory: vector-db-contracts
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          VERSION="${{ inputs.version }}"
+        else
+          VERSION=$(cat VERSION)
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Publishing PRODUCTION version: $VERSION"
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine grpcio-tools
+    
+    - name: Generate protobuf code
+      working-directory: vector-db-contracts/python
+      run: |
+        python scripts/generate_protos.py
+    
+    - name: Build package
+      working-directory: vector-db-contracts/python
+      run: |
+        python -m build
+    
+    - name: Check package
+      working-directory: vector-db-contracts/python
+      run: |
+        twine check dist/*
+    
+    - name: List package contents
+      working-directory: vector-db-contracts/python
+      run: |
+        echo "📦 Built PRODUCTION packages:"
+        ls -lh dist/
+        echo ""
+        echo "Environment: PRODUCTION"
+        echo "Version: ${{ steps.version.outputs.version }}"
+    
+    - name: Publish to PyPI (PRODUCTION)
+      if: ${{ secrets.PYPI_API_TOKEN != '' }}
+      working-directory: vector-db-contracts/python
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        twine upload dist/*
+    
+    - name: Publish to PyPI (trusted publishing)
+      if: ${{ secrets.PYPI_API_TOKEN == '' }}
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: vector-db-contracts/python/dist/
+    
+    - name: Installation instructions
+      run: |
+        echo "🚀 ✅ PRODUCTION package published to PyPI!"
+        echo ""
+        echo "Environment: PRODUCTION"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To install:"
+        echo "  pip install vectordb-contracts==${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To upgrade:"
+        echo "  pip install --upgrade vectordb-contracts"
+        echo ""
+        echo "View on PyPI: https://pypi.org/project/vectordb-contracts/${{ steps.version.outputs.version }}/"
+  
+  publish-nuget-prod:
+    name: Publish NuGet to PROD (NuGet.org)
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+      url: https://www.nuget.org/packages/VectorDB.Contracts/
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Read production version
+      id: version
+      working-directory: vector-db-contracts
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          VERSION="${{ inputs.version }}"
+        else
+          VERSION=$(cat VERSION)
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Publishing PRODUCTION version: $VERSION"
+    
+    - name: Restore dependencies
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet restore
+    
+    - name: Build
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Pack
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: |
+        dotnet pack --no-build --configuration Release \
+          --output ../../nupkg \
+          /p:PackageVersion=${{ steps.version.outputs.version }}
+    
+    - name: List package contents
+      working-directory: vector-db-contracts
+      run: |
+        echo "📦 Built PRODUCTION NuGet packages:"
+        ls -lh nupkg/
+        echo ""
+        echo "Environment: PRODUCTION"
+        echo "Version: ${{ steps.version.outputs.version }}"
+    
+    - name: Push to NuGet.org
+      working-directory: vector-db-contracts/nupkg
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      run: |
+        dotnet nuget push "*.nupkg" \
+          --api-key $NUGET_API_KEY \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+    
+    - name: Installation instructions
+      run: |
+        echo "🚀 ✅ PRODUCTION package published to NuGet.org!"
+        echo ""
+        echo "Environment: PRODUCTION"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To install:"
+        echo "  dotnet add package VectorDB.Contracts --version ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "View on NuGet: https://www.nuget.org/packages/VectorDB.Contracts/${{ steps.version.outputs.version }}/"
+    
+    - name: Upload NuGet package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package-prod-${{ steps.version.outputs.version }}
+        path: vector-db-contracts/nupkg/*.nupkg
+        retention-days: 90
+

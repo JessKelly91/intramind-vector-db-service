@@ -44,11 +44,11 @@ vector-db-contracts/
 │       └── build_package.py
 └── .github/
     └── workflows/                            # CI/CD automation
-        ├── test-python-package.yml
-        ├── test-nuget-package.yml
-        ├── publish-python-testpypi.yml       # Manual trigger
-        ├── publish-python-pypi.yml           # Manual trigger
-        └── publish-nuget.yml                 # Manual trigger
+        ├── test-python-package.yml           # Test on PR
+        ├── test-nuget-package.yml            # Test on PR
+        ├── publish-to-dev.yml                # DEV environment
+        ├── publish-to-uat.yml                # UAT environment
+        └── publish-to-prod.yml               # PROD environment
 ```
 
 ## 🚀 Usage
@@ -163,54 +163,66 @@ pip install dist/*.whl
 
 ## 🚢 Publishing Packages
 
+This project uses an enterprise-grade **DEV → UAT → PROD** deployment workflow.
+
 ### Automated Testing
 
 Pull requests automatically trigger:
 - ✅ Python package build and import tests (Python 3.9-3.12)
 - ✅ NuGet package build tests
 
-### Publishing to TestPyPI (Python)
+### Deployment Environments
 
-For testing before production release:
+| Environment | Version Format | Target | Approval |
+|-------------|----------------|--------|----------|
+| **DEV** | `1.0.0-beta.X` | TestPyPI | None |
+| **UAT** | `1.0.0-rc.X` | TestPyPI | Optional |
+| **PROD** | `1.0.0` | PyPI + NuGet.org | **Required** |
 
-1. Go to **Actions** → **Publish Python to TestPyPI**
-2. Click **Run workflow**
-3. Optionally specify version (or uses `VERSION` file)
-4. Install for testing:
-   ```bash
-   pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ vectordb-contracts
-   ```
+### Quick Deploy Guide
 
-**Required Secret:**
-- `TESTPYPI_API_TOKEN` - Get from https://test.pypi.org/manage/account/token/
+**DEV (Development Testing):**
+```bash
+# Manual trigger or auto-deploy on push to develop branch
+Actions → Publish to DEV → Run workflow
+# Publishes: vectordb-contracts==1.0.0-beta.1
+```
 
-### Publishing to PyPI (Python)
+**UAT (Release Candidate):**
+```bash
+# Manual trigger for release validation
+Actions → Publish to UAT → Run workflow
+# Publishes: vectordb-contracts==1.0.0-rc.1
+```
 
-1. Go to **Actions** → **Publish Python to PyPI**
-2. Click **Run workflow**
-3. Package is published to https://pypi.org/project/vectordb-contracts/
+**PROD (Production Release):**
+```bash
+# Update VERSION file first
+echo "1.0.0" > VERSION
+git commit -am "chore: bump version to 1.0.0"
+git push
 
-**Required Secret:**
-- `PYPI_API_TOKEN` - Get from https://pypi.org/manage/account/token/
+# Trigger deployment (requires approval)
+Actions → Publish to PROD → Run workflow → Approve
+# Publishes: vectordb-contracts==1.0.0 (PyPI + NuGet.org)
+```
 
-### Publishing to NuGet.org (C#)
+📖 **For detailed deployment instructions**, see [DEPLOYMENT.md](DEPLOYMENT.md)
 
-1. Go to **Actions** → **Publish NuGet Package**
-2. Click **Run workflow**
-3. Package is published to https://www.nuget.org/packages/VectorDB.Contracts/
+## 🔐 GitHub Environment Secrets Setup
 
-**Required Secret:**
-- `NUGET_API_KEY` - Get from https://www.nuget.org/account/apikeys
+Add secrets to GitHub Environments (Settings → Environments):
 
-## 🔐 GitHub Secrets Setup
+| Environment | Secret Name | Where to Get It |
+|-------------|-------------|-----------------|
+| **dev** | `TESTPYPI_API_TOKEN` | https://test.pypi.org/manage/account/token/ |
+| **uat** | `TESTPYPI_API_TOKEN` | https://test.pypi.org/manage/account/token/ |
+| **prod** | `PYPI_API_TOKEN` | https://pypi.org/manage/account/token/ |
+| **prod** | `NUGET_API_KEY` | https://www.nuget.org/account/apikeys |
 
-Add these secrets to your repository (Settings → Secrets and variables → Actions):
+**Important:** Configure the **prod** environment to require manual approval before deployment.
 
-| Secret Name | Where to Get It | Used For |
-|-------------|-----------------|----------|
-| `TESTPYPI_API_TOKEN` | https://test.pypi.org/manage/account/token/ | TestPyPI publishing |
-| `PYPI_API_TOKEN` | https://pypi.org/manage/account/token/ | PyPI publishing |
-| `NUGET_API_KEY` | https://www.nuget.org/account/apikeys | NuGet publishing |
+📖 **Detailed setup instructions**: [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 📚 Service Definition
 

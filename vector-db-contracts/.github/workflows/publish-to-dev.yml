@@ -1,0 +1,177 @@
+name: Publish to DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      beta_number:
+        description: 'Beta version number (e.g., 1 for 1.0.0-beta.1)'
+        required: true
+        type: string
+        default: '1'
+  push:
+    branches:
+      - develop
+      - dev
+
+jobs:
+  publish-python-dev:
+    name: Publish Python to DEV (TestPyPI)
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://test.pypi.org/project/vectordb-contracts/
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Calculate DEV version
+      id: version
+      working-directory: vector-db-contracts
+      run: |
+        BASE_VERSION=$(cat VERSION)
+        BETA_NUM="${{ inputs.beta_number }}"
+        if [ -z "$BETA_NUM" ]; then
+          # Auto-increment based on timestamp for push triggers
+          BETA_NUM=$(date +%Y%m%d%H%M)
+        fi
+        DEV_VERSION="${BASE_VERSION}-beta.${BETA_NUM}"
+        echo "version=$DEV_VERSION" >> $GITHUB_OUTPUT
+        echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Publishing DEV version: $DEV_VERSION"
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine grpcio-tools
+    
+    - name: Generate protobuf code
+      working-directory: vector-db-contracts/python
+      run: |
+        python scripts/generate_protos.py
+    
+    - name: Update version in setup.py for DEV
+      working-directory: vector-db-contracts
+      run: |
+        # Temporarily update VERSION file for build
+        echo "${{ steps.version.outputs.version }}" > VERSION
+    
+    - name: Build package
+      working-directory: vector-db-contracts/python
+      run: |
+        python -m build
+    
+    - name: Check package
+      working-directory: vector-db-contracts/python
+      run: |
+        twine check dist/*
+    
+    - name: List package contents
+      working-directory: vector-db-contracts/python
+      run: |
+        echo "📦 Built DEV packages:"
+        ls -lh dist/
+        echo ""
+        echo "Environment: DEV"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo "Base version: ${{ steps.version.outputs.base_version }}"
+    
+    - name: Publish to TestPyPI (DEV)
+      working-directory: vector-db-contracts/python
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TESTPYPI_API_TOKEN }}
+      run: |
+        twine upload --repository testpypi dist/*
+    
+    - name: Installation instructions
+      run: |
+        echo "✅ DEV package published to TestPyPI!"
+        echo ""
+        echo "Environment: DEV"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To install and test:"
+        echo "  pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ vectordb-contracts==${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To test imports:"
+        echo "  python -c 'from vectordb_contracts import vector_service_pb2, vector_service_pb2_grpc; print(\"✓ DEV package works!\")'"
+        echo ""
+        echo "View on TestPyPI: https://test.pypi.org/project/vectordb-contracts/${{ steps.version.outputs.version }}/"
+  
+  publish-nuget-dev:
+    name: Publish NuGet to DEV (Local/Test Feed)
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Calculate DEV version
+      id: version
+      working-directory: vector-db-contracts
+      run: |
+        BASE_VERSION=$(cat VERSION)
+        BETA_NUM="${{ inputs.beta_number }}"
+        if [ -z "$BETA_NUM" ]; then
+          BETA_NUM=$(date +%Y%m%d%H%M)
+        fi
+        DEV_VERSION="${BASE_VERSION}-beta.${BETA_NUM}"
+        echo "version=$DEV_VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Building DEV version: $DEV_VERSION"
+    
+    - name: Restore dependencies
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet restore
+    
+    - name: Build
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Pack with DEV version
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: |
+        dotnet pack --no-build --configuration Release \
+          --output ../../nupkg \
+          /p:PackageVersion=${{ steps.version.outputs.version }} \
+          /p:VersionSuffix=beta.${{ inputs.beta_number || '$(date +%Y%m%d%H%M)' }}
+    
+    - name: List package contents
+      working-directory: vector-db-contracts
+      run: |
+        echo "📦 Built DEV NuGet packages:"
+        ls -lh nupkg/
+        echo ""
+        echo "Environment: DEV"
+        echo "Version: ${{ steps.version.outputs.version }}"
+    
+    - name: Upload NuGet package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package-dev-${{ steps.version.outputs.version }}
+        path: vector-db-contracts/nupkg/*.nupkg
+        retention-days: 30
+    
+    - name: Installation instructions
+      run: |
+        echo "✅ DEV NuGet package built!"
+        echo ""
+        echo "Environment: DEV"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "Package saved as GitHub artifact for testing."
+        echo "To test locally, download the artifact and run:"
+        echo "  dotnet add package VectorDB.Contracts --version ${{ steps.version.outputs.version }} --source ./nupkg"
+

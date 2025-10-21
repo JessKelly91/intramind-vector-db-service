@@ -86,70 +86,85 @@ ls ../../nupkg/
 # Should show: VectorDB.Contracts.1.0.0.nupkg
 ```
 
-### Step 3: Setup GitHub Secrets (10 minutes)
+### Step 3: Setup GitHub Environments & Secrets (10 minutes)
 
-Before you can publish packages, you need to add API tokens to GitHub:
+This project uses **DEV → UAT → PROD** deployment environments.
 
-#### 3a. TestPyPI Token
+#### 3a. Create Environments
 
-1. Go to https://test.pypi.org/
-2. Register an account (if you don't have one)
-3. Verify your email
-4. Go to https://test.pypi.org/manage/account/token/
-5. Click "Add API token"
+1. Go to your GitHub repo → **Settings** → **Environments**
+2. Click **New environment**
+3. Create **three environments**:
+   - `dev` (Development)
+   - `uat` (User Acceptance Testing)
+   - `prod` (Production)
+
+#### 3b. Configure Environment Protection Rules
+
+**For dev environment:**
+- No protection rules needed (auto-deploy)
+
+**For uat environment:**
+- Optional: Add reviewers if you want approval
+
+**For prod environment** (IMPORTANT):
+- ✅ **Check "Required reviewers"**
+- ✅ **Add yourself as a reviewer**
+- ✅ **Deployment branches**: Select "Selected branches" → Add `main` or `master`
+
+#### 3c. Add Secrets to Environments
+
+**Get TestPyPI Token:**
+1. Go to https://test.pypi.org/ and register
+2. Go to https://test.pypi.org/manage/account/token/
+3. Click "Add API token"
    - Token name: `github-actions-vectordb-contracts`
-   - Scope: "Entire account" (for now, you can scope to project after first upload)
-6. **Copy the token** (starts with `pypi-...`)
-7. In GitHub: Go to your repo → Settings → Secrets and variables → Actions
-8. Click "New repository secret"
+   - Scope: "Entire account"
+4. **Copy the token** (starts with `pypi-...`)
+
+**Add to dev environment:**
+1. Click on **dev** environment
+2. Click "Add secret"
    - Name: `TESTPYPI_API_TOKEN`
    - Secret: Paste the token
-   - Click "Add secret"
 
-#### 3b. PyPI Token (Optional - for later)
+**Add to uat environment:**
+1. Click on **uat** environment
+2. Click "Add secret"
+   - Name: `TESTPYPI_API_TOKEN`
+   - Secret: Same token as dev
 
-Same process as TestPyPI, but at https://pypi.org/
+**For prod environment (optional for now):**
+- `PYPI_API_TOKEN` - Get from https://pypi.org/ (when ready for public release)
+- `NUGET_API_KEY` - Get from https://www.nuget.org/account/apikeys (when ready)
 
-- Secret name: `PYPI_API_TOKEN`
-
-#### 3c. NuGet API Key (Optional - for later)
-
-1. Go to https://www.nuget.org/
-2. Sign in with Microsoft account
-3. Go to https://www.nuget.org/account/apikeys
-4. Create new API key
-   - Key Name: `github-actions-vectordb-contracts`
-   - Expires In: 365 days (or your preference)
-   - Select Scopes: "Push" and "Push new packages"
-5. **Copy the key**
-6. Add to GitHub secrets as `NUGET_API_KEY`
-
-### Step 4: Publish to TestPyPI (First Test Publish!)
+### Step 4: Publish to DEV (First Test Publish!)
 
 1. Go to your GitHub repository
 2. Click **Actions** tab
-3. Click **Publish Python to TestPyPI** (left sidebar)
+3. Click **Publish to DEV** (left sidebar)
 4. Click **Run workflow** (right side)
-5. Keep version empty (uses VERSION file)
+5. Enter beta number: `1`
 6. Click **Run workflow** button
 7. Wait for the workflow to complete (~2 minutes)
 
 If successful, you'll see:
 ```
-✅ Package published to TestPyPI!
+✅ DEV package published to TestPyPI!
 
-View on TestPyPI: https://test.pypi.org/project/vectordb-contracts/1.0.0/
+Version: 1.0.0-beta.1
+View on TestPyPI: https://test.pypi.org/project/vectordb-contracts/1.0.0-beta.1/
 ```
 
-### Step 5: Test Install from TestPyPI
+### Step 5: Test Install from DEV
 
 ```bash
 # Create a fresh virtual environment for testing
 python -m venv test-env
 source test-env/bin/activate  # On Windows: test-env\Scripts\activate
 
-# Install from TestPyPI
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ vectordb-contracts
+# Install DEV version from TestPyPI
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ vectordb-contracts==1.0.0-beta.1
 
 # Test it works
 python -c "
@@ -170,9 +185,10 @@ After completing the steps above, verify:
 - [ ] Python protobuf generation works locally
 - [ ] Python package builds without errors
 - [ ] C# project builds and reads VERSION file correctly
-- [ ] GitHub secrets are configured (at least TESTPYPI_API_TOKEN)
-- [ ] Package successfully published to TestPyPI
-- [ ] Package can be installed from TestPyPI
+- [ ] GitHub environments created (dev, uat, prod)
+- [ ] Secrets configured in environments
+- [ ] Package successfully published to DEV environment
+- [ ] DEV package can be installed from TestPyPI
 - [ ] Imports work correctly after installation
 
 ## 🚀 What's Next?
@@ -185,19 +201,34 @@ After completing the steps above, verify:
 4. **Commit changes**: Generated files are gitignored automatically
 5. **Push to GitHub**: Automated tests will run on PR
 
-### For Production Publishing
+### For UAT and Production Publishing
 
-When ready to publish to production registries:
+**UAT (Release Candidate Testing):**
+```bash
+# When ready for UAT validation
+Actions → Publish to UAT → Run workflow
+# Publishes: 1.0.0-rc.1
+```
 
-#### Python to PyPI
-1. Ensure `PYPI_API_TOKEN` secret is set
-2. Go to Actions → **Publish Python to PyPI**
-3. Run workflow
+**PROD (Public Release):**
+```bash
+# 1. Update VERSION file
+echo "1.0.0" > vector-db-contracts/VERSION
+git commit -am "chore: bump version to 1.0.0"
+git push
 
-#### C# to NuGet.org
-1. Ensure `NUGET_API_KEY` secret is set
-2. Go to Actions → **Publish NuGet Package**
-3. Run workflow
+# 2. Configure prod secrets first:
+#    - PYPI_API_TOKEN (from pypi.org)
+#    - NUGET_API_KEY (from nuget.org)
+
+# 3. Trigger deployment
+Actions → Publish to PROD → Run workflow
+
+# 4. Approve deployment when prompted
+Actions → Review pending deployments → Approve
+```
+
+📖 **Full deployment guide**: [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 📚 Quick Reference
 

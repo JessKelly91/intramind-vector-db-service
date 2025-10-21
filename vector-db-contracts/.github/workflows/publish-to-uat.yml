@@ -1,0 +1,169 @@
+name: Publish to UAT
+
+on:
+  workflow_dispatch:
+    inputs:
+      rc_number:
+        description: 'Release Candidate number (e.g., 1 for 1.0.0-rc.1)'
+        required: true
+        type: string
+        default: '1'
+
+jobs:
+  publish-python-uat:
+    name: Publish Python to UAT (TestPyPI)
+    runs-on: ubuntu-latest
+    environment:
+      name: uat
+      url: https://test.pypi.org/project/vectordb-contracts/
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Calculate UAT version
+      id: version
+      working-directory: vector-db-contracts
+      run: |
+        BASE_VERSION=$(cat VERSION)
+        RC_NUM="${{ inputs.rc_number }}"
+        UAT_VERSION="${BASE_VERSION}-rc.${RC_NUM}"
+        echo "version=$UAT_VERSION" >> $GITHUB_OUTPUT
+        echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Publishing UAT version: $UAT_VERSION"
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine grpcio-tools
+    
+    - name: Generate protobuf code
+      working-directory: vector-db-contracts/python
+      run: |
+        python scripts/generate_protos.py
+    
+    - name: Update version in setup.py for UAT
+      working-directory: vector-db-contracts
+      run: |
+        # Temporarily update VERSION file for build
+        echo "${{ steps.version.outputs.version }}" > VERSION
+    
+    - name: Build package
+      working-directory: vector-db-contracts/python
+      run: |
+        python -m build
+    
+    - name: Check package
+      working-directory: vector-db-contracts/python
+      run: |
+        twine check dist/*
+    
+    - name: List package contents
+      working-directory: vector-db-contracts/python
+      run: |
+        echo "📦 Built UAT packages:"
+        ls -lh dist/
+        echo ""
+        echo "Environment: UAT"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo "Base version: ${{ steps.version.outputs.base_version }}"
+    
+    - name: Publish to TestPyPI (UAT)
+      working-directory: vector-db-contracts/python
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TESTPYPI_API_TOKEN }}
+      run: |
+        twine upload --repository testpypi dist/*
+    
+    - name: Installation instructions
+      run: |
+        echo "✅ UAT package published to TestPyPI!"
+        echo ""
+        echo "Environment: UAT (Release Candidate)"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To install and test:"
+        echo "  pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ vectordb-contracts==${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To test imports:"
+        echo "  python -c 'from vectordb_contracts import vector_service_pb2, vector_service_pb2_grpc; print(\"✓ UAT package works!\")'"
+        echo ""
+        echo "View on TestPyPI: https://test.pypi.org/project/vectordb-contracts/${{ steps.version.outputs.version }}/"
+        echo ""
+        echo "⚠️  If UAT validation passes, promote to PROD using 'Publish to PROD' workflow"
+  
+  publish-nuget-uat:
+    name: Publish NuGet to UAT
+    runs-on: ubuntu-latest
+    environment:
+      name: uat
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Calculate UAT version
+      id: version
+      working-directory: vector-db-contracts
+      run: |
+        BASE_VERSION=$(cat VERSION)
+        RC_NUM="${{ inputs.rc_number }}"
+        UAT_VERSION="${BASE_VERSION}-rc.${RC_NUM}"
+        echo "version=$UAT_VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Building UAT version: $UAT_VERSION"
+    
+    - name: Restore dependencies
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet restore
+    
+    - name: Build
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Pack with UAT version
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: |
+        dotnet pack --no-build --configuration Release \
+          --output ../../nupkg \
+          /p:PackageVersion=${{ steps.version.outputs.version }}
+    
+    - name: List package contents
+      working-directory: vector-db-contracts
+      run: |
+        echo "📦 Built UAT NuGet packages:"
+        ls -lh nupkg/
+        echo ""
+        echo "Environment: UAT"
+        echo "Version: ${{ steps.version.outputs.version }}"
+    
+    - name: Upload NuGet package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package-uat-${{ steps.version.outputs.version }}
+        path: vector-db-contracts/nupkg/*.nupkg
+        retention-days: 90
+    
+    - name: Installation instructions
+      run: |
+        echo "✅ UAT NuGet package built!"
+        echo ""
+        echo "Environment: UAT (Release Candidate)"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "Package saved as GitHub artifact for testing."
+        echo "To test locally, download the artifact and run:"
+        echo "  dotnet add package VectorDB.Contracts --version ${{ steps.version.outputs.version }} --source ./nupkg"
+        echo ""
+        echo "⚠️  If UAT validation passes, promote to PROD using 'Publish to PROD' workflow"
+
