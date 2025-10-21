@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package vectordb.core.v1;
+option csharp_namespace = "VectorDB.Contracts.Core.V1";
+
+import "google/protobuf/timestamp.proto";
+
+// ============================================================================
+// Document/Vector Operations Messages
+// ============================================================================
+
+message InsertVectorRequest {
+  string vector_id = 1;
+  string collection_name = 2;
+  string content = 3;
+  map<string, string> metadata = 4;
+  string correlation_id = 5;
+}
+
+message InsertVectorResponse {
+  string vector_id = 1;
+  string collection_name = 2;
+  string content = 3;
+  map<string, string> metadata = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  bool success = 7;
+  string error_message = 8;
+}
+
+message InsertVectorBatchRequest {
+  repeated InsertVectorRequest vectors = 1;
+  string correlation_id = 2;
+}
+
+message InsertVectorBatchResponse {
+  repeated InsertVectorResponse vectors = 1;
+  int32 total_inserted = 2;
+  int32 total_failed = 3;
+  bool success = 4;
+  string error_message = 5;
+}
+
+message GetVectorRequest {
+  string vector_id = 1;
+  string correlation_id = 2;
+}
+
+message GetVectorResponse {
+  string vector_id = 1;
+  string collection_name = 2;
+  string content = 3;
+  map<string, string> metadata = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  bool success = 7;
+  string error_message = 8;
+}
+
+message UpdateVectorRequest {
+  string vector_id = 1;
+  string collection_name = 2;
+  string content = 3;
+  map<string, string> metadata = 4;
+  string correlation_id = 5;
+}
+
+message UpdateVectorResponse {
+  string vector_id = 1;
+  string collection_name = 2;
+  string content = 3;
+  map<string, string> metadata = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  bool success = 7;
+  string error_message = 8;
+}
+
+message DeleteVectorRequest {
+  string vector_id = 1;
+  string correlation_id = 2;
+}
+
+message DeleteVectorResponse {
+  bool success = 1;
+  string message = 2;
+  string error_message = 3;
+}

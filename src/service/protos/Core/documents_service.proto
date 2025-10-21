@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package vectordb.core.v1;
+option csharp_namespace = "VectorDB.Contracts.Core.V1";
+
+import "Protos/Core/documents_messages.proto";
+
+// Service for document/vector CRUD operations
+service DocumentService {
+  // Insert a single document/vector
+  rpc InsertVector(InsertVectorRequest) returns (InsertVectorResponse);
+  
+  // Insert multiple documents/vectors in batch
+  rpc InsertVectorBatch(InsertVectorBatchRequest) returns (InsertVectorBatchResponse);
+  
+  // Get a specific document/vector
+  rpc GetVector(GetVectorRequest) returns (GetVectorResponse);
+  
+  // Update a document/vector
+  rpc UpdateVector(UpdateVectorRequest) returns (UpdateVectorResponse);
+  
+  // Delete a document/vector
+  rpc DeleteVector(DeleteVectorRequest) returns (DeleteVectorResponse);
+}
