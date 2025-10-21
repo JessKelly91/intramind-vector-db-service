@@ -1,0 +1,15 @@
+# Include documentation
+include README.md
+include ../VERSION
+
+# Include proto files for reference
+recursive-include ../src/VectorDB.Contracts/Protos *.proto
+
+# Exclude unnecessary files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude *.dylib
+

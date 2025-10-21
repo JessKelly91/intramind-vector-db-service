@@ -1,0 +1,47 @@
+# Generated protobuf files - DO NOT COMMIT
+vectordb_contracts/*_pb2.py
+vectordb_contracts/*_pb2_grpc.py
+vectordb_contracts/*_pb2.pyi
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Distribution / packaging
+.Python
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+

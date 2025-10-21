@@ -1,0 +1,50 @@
+<!--
+  VectorDB.Contracts - Protocol Buffer Contracts for Vector Database Service
+
+  This project contains the gRPC service definitions (.proto files) and generates
+  both client and server code for C#/.NET consumers.
+
+  Publishes to NuGet for consumption by:
+  - C# API Gateway services
+  - Other .NET microservices that need to call the Vector DB Service
+
+  Python service will consume equivalent PyPI package generated from same .proto files.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <VersionPrefix>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../../VERSION').Trim())</VersionPrefix>
+    <Authors>Jess Kelly</Authors>
+    <Company>Jess Kelly</Company>
+    <Product>Vector Database Service</Product>
+    <PackageDescription>Protocol buffer contracts for Vector Database gRPC Service. Contains service definitions for vector operations, semantic search, and collection management.</PackageDescription>
+    <PackageTags>grpc;protobuf;vectordb;weaviate;contracts</PackageTags>
+    <OutputType>library</OutputType>
+    <PackageProjectUrl>https://github.com/JessKelly91/ai-vector-db-practice</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/JessKelly91/ai-vector-db-practice</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <!-- gRPC and Protocol Buffer Dependencies -->
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
+    <PackageReference Include="Grpc.Core.Api" Version="2.67.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.67.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Include all .proto files and generate both client and server code -->
+  <ItemGroup>
+    <Protobuf Include="Protos\*.proto" GrpcServices="Both" />
+  </ItemGroup>
+
+  <!-- Ensure .proto files are included in NuGet package for reference -->
+  <ItemGroup>
+    <None Include="Protos\*.proto" Pack="true" PackagePath="protos\" />
+  </ItemGroup>
+</Project>

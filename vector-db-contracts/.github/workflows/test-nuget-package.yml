@@ -1,0 +1,72 @@
+name: Test NuGet Package
+
+on:
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'vector-db-contracts/src/**'
+      - 'vector-db-contracts/VERSION'
+      - '.github/workflows/test-nuget-package.yml'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'vector-db-contracts/src/**'
+      - 'vector-db-contracts/VERSION'
+      - '.github/workflows/test-nuget-package.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test NuGet Package
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Restore dependencies
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet restore
+    
+    - name: Build
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Pack
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet pack --no-build --configuration Release --output ../../nupkg
+    
+    - name: List package contents
+      working-directory: vector-db-contracts
+      run: |
+        echo "Built NuGet packages:"
+        ls -lh nupkg/
+    
+    - name: Upload NuGet package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package
+        path: vector-db-contracts/nupkg/*.nupkg
+        retention-days: 7
+
+  build-summary:
+    name: Build Summary
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Check build status
+      run: |
+        if [ "${{ needs.test.result }}" = "success" ]; then
+          echo "✅ NuGet package build passed!"
+        else
+          echo "❌ NuGet package build failed"
+          exit 1
+        fi
+

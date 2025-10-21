@@ -1,3 +1,18 @@
+# .NET / C#
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -49,8 +64,14 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Generated protobuf files (Python)
+*_pb2.py
+*_pb2_grpc.py
+*_pb2.pyi
+
 # Logs
 *.log
 /.vs/ai-vector-db-practice/FileContentIndex
 /.vs/ai-vector-db-practice/v17
 /.vs
+/.claude

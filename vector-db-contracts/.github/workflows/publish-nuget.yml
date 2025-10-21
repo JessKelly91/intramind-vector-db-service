@@ -1,0 +1,96 @@
+name: Publish NuGet Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (leave empty to use VERSION file)'
+        required: false
+        type: string
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish to NuGet.org
+    runs-on: ubuntu-latest
+    environment:
+      name: nuget
+      url: https://www.nuget.org/packages/VectorDB.Contracts/
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Read version
+      id: version
+      working-directory: vector-db-contracts
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          VERSION="${{ inputs.version }}"
+        else
+          VERSION=$(cat VERSION)
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Publishing version: $VERSION"
+    
+    - name: Update version in csproj (if manual version provided)
+      if: ${{ inputs.version != '' }}
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: |
+        sed -i "s/<VersionPrefix>.*<\/VersionPrefix>/<VersionPrefix>${{ steps.version.outputs.version }}<\/VersionPrefix>/" VectorDB.Contracts.csproj
+    
+    - name: Restore dependencies
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet restore
+    
+    - name: Build
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Pack
+      working-directory: vector-db-contracts/src/VectorDB.Contracts
+      run: |
+        dotnet pack --no-build --configuration Release \
+          --output ../../nupkg \
+          /p:PackageVersion=${{ steps.version.outputs.version }}
+    
+    - name: List package contents
+      working-directory: vector-db-contracts
+      run: |
+        echo "📦 Built NuGet packages:"
+        ls -lh nupkg/
+        echo ""
+        echo "Package version: ${{ steps.version.outputs.version }}"
+    
+    - name: Push to NuGet.org
+      working-directory: vector-db-contracts/nupkg
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      run: |
+        dotnet nuget push "*.nupkg" \
+          --api-key $NUGET_API_KEY \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+    
+    - name: Installation instructions
+      run: |
+        echo "✅ Package published to NuGet.org!"
+        echo ""
+        echo "To install:"
+        echo "  dotnet add package VectorDB.Contracts"
+        echo ""
+        echo "View on NuGet: https://www.nuget.org/packages/VectorDB.Contracts/${{ steps.version.outputs.version }}/"
+    
+    - name: Upload NuGet package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package-${{ steps.version.outputs.version }}
+        path: vector-db-contracts/nupkg/*.nupkg
+        retention-days: 90
+
