@@ -149,6 +149,65 @@ class QueryManager:
             print(f"Error deleting document: {e}")
             raise
 
+    def update(
+        self,
+        object_id: str,
+        content: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Update an existing document (partial update).
+        
+        Only updates the fields that are provided. If a field is None, it won't be updated.
+        
+        Args:
+            object_id: UUID of the document to update
+            content: New content (optional)
+            metadata: New metadata (optional)
+        
+        Returns:
+            True if successful
+            
+        Raises:
+            ValueError: If document doesn't exist
+            Exception: For other errors
+        """
+        try:
+            # First verify the document exists
+            existing = self.collection.query.fetch_object_by_id(object_id)
+            if not existing:
+                raise ValueError(f"Document with ID {object_id} not found")
+            
+            # Build the properties to update
+            properties_to_update = {}
+            
+            if content is not None:
+                properties_to_update['content'] = content
+            
+            if metadata is not None:
+                properties_to_update['metadata'] = json.dumps(metadata)
+            
+            # Only proceed if there's something to update
+            if not properties_to_update:
+                print(f"No fields to update for document {object_id}")
+                return True
+            
+            # Perform the update
+            self.collection.data.update(
+                uuid=object_id,
+                properties=properties_to_update
+            )
+            
+            print(f"Document {object_id} updated successfully")
+            return True
+            
+        except ValueError as e:
+            # Re-raise ValueError for not found
+            raise
+        except Exception as e:
+            print(f"Error updating document: {e}")
+            raise
+
     def count(self) -> int:
         """Get total count of documents in collection."""
         try:

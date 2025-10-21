@@ -213,14 +213,76 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
 
     def UpdateVector(self, request, context):
         """Update a vector/document."""
-        # Note: This is a simplified implementation
-        # In practice, you'd need to implement proper update logic in queries.py
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('UpdateVector not yet implemented')
-        return vector_service_pb2.VectorResponse(
-            success=False,
-            error_message="UpdateVector not yet implemented"
-        )
+        try:
+            query_manager = QueryManager(
+                self.weaviate_client.client,
+                request.collection_name
+            )
+
+            # Prepare content and metadata (only include if provided)
+            content = request.content if request.content else None
+            metadata = dict(request.metadata) if request.metadata else None
+
+            # Perform partial update
+            query_manager.update(
+                object_id=request.vector_id,
+                content=content,
+                metadata=metadata
+            )
+
+            # Retrieve the updated document to return in response
+            updated_doc = query_manager.get_by_id(request.vector_id)
+
+            if not updated_doc:
+                context.set_code(grpc.StatusCode.INTERNAL)
+                context.set_details("Document updated but could not be retrieved")
+                return vector_service_pb2.VectorResponse(
+                    success=False,
+                    error_message="Document updated but could not be retrieved"
+                )
+
+            if self.telemetry:
+                self.telemetry.track_event(
+                    "VectorUpdated",
+                    properties={
+                        "collection": request.collection_name,
+                        "vector_id": request.vector_id,
+                        "correlation_id": request.correlation_id
+                    }
+                )
+
+            return vector_service_pb2.VectorResponse(
+                id=updated_doc.id,
+                content=updated_doc.content,
+                metadata=updated_doc.metadata or {},
+                created_at=updated_doc.created_at.isoformat() if updated_doc.created_at else "",
+                success=True
+            )
+
+        except ValueError as e:
+            # Document not found
+            if self.telemetry:
+                self.telemetry.track_exception(e, properties={"operation": "UpdateVector"})
+
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details(str(e))
+
+            return vector_service_pb2.VectorResponse(
+                success=False,
+                error_message=str(e)
+            )
+
+        except Exception as e:
+            if self.telemetry:
+                self.telemetry.track_exception(e, properties={"operation": "UpdateVector"})
+
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(str(e))
+
+            return vector_service_pb2.VectorResponse(
+                success=False,
+                error_message=str(e)
+            )
 
     def SemanticSearch(self, request, context):
         """Perform semantic search."""
