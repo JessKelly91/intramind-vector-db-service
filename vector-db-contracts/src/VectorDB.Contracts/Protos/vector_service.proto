@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package vectordb;
-option csharp_namespace = "VectorService";
+option csharp_namespace = "VectorDB.Contracts";
 
 // Import all domain messages (services are not needed since we directly reference messages)
 import "Core/collections_messages.proto";
