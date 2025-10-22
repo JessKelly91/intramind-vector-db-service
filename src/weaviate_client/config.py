@@ -61,6 +61,7 @@ class Settings:
             'APPINSIGHTS_CONNECTION_STRING': 'ApplicationInsights.ConnectionString',
             'ENVIRONMENT': 'Environment.Value',
             'APPLICATION_ID': 'Environment.ApplicationId',
+            'GRPC_SERVER_PORT': 'GrpcServer.Port',
         }
 
         for env_var, setting_path in env_mappings.items():
