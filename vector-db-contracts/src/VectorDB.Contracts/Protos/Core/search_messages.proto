@@ -41,3 +41,4 @@ message StreamSearchRequest {
   bool return_metadata = 6;
   map<string, string> filters = 7;
 }
+

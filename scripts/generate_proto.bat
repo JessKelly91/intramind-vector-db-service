@@ -1,65 +1,76 @@
 @echo off
 REM Generate Python code from Protocol Buffer definitions
+REM Now generates from vector-db-contracts (single source of truth)
 
 cd %~dp0\..
 
 echo Generating Python code from .proto files...
+echo Source: vector-db-contracts/src/VectorDB.Contracts/Protos/
+echo.
+
+REM Define paths
+set PROTO_DIR=vector-db-contracts/src/VectorDB.Contracts/Protos
+set OUTPUT_DIR=src/service/protos
+
+REM Create output directory if it doesn't exist
+if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
+if not exist "%OUTPUT_DIR%\Core" mkdir "%OUTPUT_DIR%\Core"
 
 REM Generate code for all Core proto files
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/collections_messages.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/collections_messages.proto
 
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/collections_service.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/collections_service.proto
 
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/documents_messages.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/documents_messages.proto
 
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/documents_service.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/documents_service.proto
 
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/search_messages.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/search_messages.proto
 
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/search_service.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/search_service.proto
 
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/health_messages.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/health_messages.proto
 
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/Core/health_service.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/Core/health_service.proto
 
 REM Generate code for the main vector service
 python -m grpc_tools.protoc ^
-  -I./src/service/protos ^
-  --python_out=./src/service/protos ^
-  --grpc_python_out=./src/service/protos ^
-  ./src/service/protos/vector_service.proto
+  -I./%PROTO_DIR% ^
+  --python_out=./%OUTPUT_DIR% ^
+  --grpc_python_out=./%OUTPUT_DIR% ^
+  ./%PROTO_DIR%/vector_service.proto
 
 if %ERRORLEVEL% EQU 0 (
     echo.
@@ -72,7 +83,7 @@ if %ERRORLEVEL% EQU 0 (
     echo   - src/service/protos/vector_service_pb2.py
     echo   - src/service/protos/vector_service_pb2_grpc.py
     echo.
-    echo You can now use these in your Python code.
+    echo Note: These are generated from vector-db-contracts (single source of truth)
 ) else (
     echo.
     echo Error: Failed to generate proto files

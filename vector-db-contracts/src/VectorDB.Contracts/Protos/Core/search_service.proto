@@ -13,3 +13,4 @@ service SearchService {
   // Perform streaming semantic search
   rpc StreamSearch(StreamSearchRequest) returns (stream SearchResult);
 }
+

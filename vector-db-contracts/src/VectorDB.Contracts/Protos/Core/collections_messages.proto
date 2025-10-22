@@ -67,3 +67,4 @@ message CollectionInfo {
   int32 vector_count = 3;
   google.protobuf.Timestamp created_at = 4;
 }
+

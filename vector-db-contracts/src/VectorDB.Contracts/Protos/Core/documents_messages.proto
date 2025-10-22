@@ -86,3 +86,4 @@ message DeleteVectorResponse {
   string message = 2;
   string error_message = 3;
 }
+

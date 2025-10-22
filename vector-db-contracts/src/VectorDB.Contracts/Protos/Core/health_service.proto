@@ -10,3 +10,4 @@ service HealthService {
   // Perform health check
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
+

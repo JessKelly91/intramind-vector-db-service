@@ -41,10 +41,12 @@
   <!-- Include all .proto files and generate both client and server code -->
   <ItemGroup>
     <Protobuf Include="Protos\*.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos\Core\*.proto" GrpcServices="Both" />
   </ItemGroup>
 
   <!-- Ensure .proto files are included in NuGet package for reference -->
   <ItemGroup>
     <None Include="Protos\*.proto" Pack="true" PackagePath="protos\" />
+    <None Include="Protos\Core\*.proto" Pack="true" PackagePath="protos\Core\" />
   </ItemGroup>
 </Project>

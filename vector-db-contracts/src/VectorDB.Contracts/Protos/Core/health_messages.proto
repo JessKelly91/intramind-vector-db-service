@@ -25,3 +25,4 @@ message HealthCheckResponse {
   string environment = 4;
   int64 uptime_seconds = 5;
 }
+

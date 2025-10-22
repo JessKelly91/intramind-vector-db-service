@@ -1,62 +1,49 @@
-# Vector Service Proto Files
+# Generated Protocol Buffer Files
 
-This directory contains the Protocol Buffer definitions for the Vector Database Service, organized by domain following the PaymentProcessing service pattern.
+This directory contains **generated Python code only**. Do not edit these files manually.
 
-## Structure
+## Source of Truth
 
+The source `.proto` files are maintained in:
 ```
-Protos/
-├── Core/                           # Domain-specific proto files
-│   ├── collections_messages.proto  # Collection operation messages
-│   ├── collections_service.proto    # Collection service definition
-│   ├── documents_messages.proto    # Document/vector operation messages
-│   ├── documents_service.proto      # Document service definition
-│   ├── search_messages.proto        # Search operation messages
-│   ├── search_service.proto         # Search service definition
-│   ├── health_messages.proto       # Health check messages
-│   └── health_service.proto         # Health service definition
-└── vector_service.proto            # Main service (composes all domains)
+vector-db-service/vector-db-contracts/src/VectorDB.Contracts/Protos/
 ```
 
-## Domain Organization
+## Generating Python Code
 
-### Collections
-- **Messages**: Collection CRUD operations (Create, List, Get, Delete)
-- **Service**: `CollectionService` with collection management RPCs
+To regenerate the Python protobuf files from the contracts, run:
 
-### Documents
-- **Messages**: Document/vector CRUD operations (Insert, Get, Update, Delete, Batch)
-- **Service**: `DocumentService` with document management RPCs
+**Windows:**
+```bash
+scripts\generate_proto.bat
+```
 
-### Search
-- **Messages**: Semantic search operations (Search, Stream)
-- **Service**: `SearchService` with search functionality RPCs
+**Linux/macOS:**
+```bash
+scripts/generate_proto.sh
+```
 
-### Health
-- **Messages**: Health check operations
-- **Service**: `HealthService` with health monitoring RPCs
+This will generate:
+- `*_pb2.py` - Message classes
+- `*_pb2_grpc.py` - Service stubs and servicers
 
-## Main Service
+## Directory Structure
 
-The `vector_service.proto` file imports all domain services and composes them into a single unified `VectorService` that provides all functionality through a single gRPC endpoint.
+```
+protos/
+├── __init__.py                    # Python package marker
+├── Core/                          # Generated domain modules
+│   ├── collections_*_pb2.py
+│   ├── documents_*_pb2.py
+│   ├── search_*_pb2.py
+│   └── health_*_pb2.py
+└── vector_service_pb2*.py         # Main service module
+```
 
-## Code Generation
+## Note
 
-Use the provided scripts to generate Python code:
+Generated files are gitignored (see `../.gitignore`). They must be regenerated after:
+- Pulling changes that modify `.proto` files
+- Initial project setup
+- Before running the service
 
-- **Windows**: `scripts/generate_proto.bat`
-- **Linux/macOS**: `scripts/generate_proto.sh`
-
-The scripts will generate:
-- `Core/*_pb2.py` - Message classes
-- `Core/*_pb2_grpc.py` - Service classes
-- `vector_service_pb2.py` - Main service messages
-- `vector_service_pb2_grpc.py` - Main service classes
-
-## Benefits
-
-- **Maintainability**: Each domain can be maintained independently
-- **Clean Imports**: Services only import the messages they need
-- **Domain Separation**: Aligns with API Gateway organization
-- **Future Scalability**: Easy to add new domains without bloating existing files
-- **Consistent Pattern**: Follows the same organization as PaymentProcessing service

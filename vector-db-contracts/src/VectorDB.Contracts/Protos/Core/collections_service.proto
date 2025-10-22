@@ -19,3 +19,4 @@ service CollectionService {
   // Delete a collection
   rpc DeleteCollection(DeleteCollectionRequest) returns (DeleteCollectionResponse);
 }
+
