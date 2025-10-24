@@ -15,7 +15,10 @@ service DocumentService {
   
   // Get a specific document/vector
   rpc GetVector(GetVectorRequest) returns (GetVectorResponse);
-  
+
+  // Get multiple documents/vectors in batch
+  rpc GetVectorBatch(GetVectorBatchRequest) returns (GetVectorBatchResponse);
+
   // Update a document/vector
   rpc UpdateVector(UpdateVectorRequest) returns (UpdateVectorResponse);
   

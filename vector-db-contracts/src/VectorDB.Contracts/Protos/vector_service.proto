@@ -22,6 +22,7 @@ service VectorService {
   rpc InsertVector(vectordb.core.v1.InsertVectorRequest) returns (vectordb.core.v1.InsertVectorResponse);
   rpc InsertVectorBatch(vectordb.core.v1.InsertVectorBatchRequest) returns (vectordb.core.v1.InsertVectorBatchResponse);
   rpc GetVector(vectordb.core.v1.GetVectorRequest) returns (vectordb.core.v1.GetVectorResponse);
+  rpc GetVectorBatch(vectordb.core.v1.GetVectorBatchRequest) returns (vectordb.core.v1.GetVectorBatchResponse);
   rpc UpdateVector(vectordb.core.v1.UpdateVectorRequest) returns (vectordb.core.v1.UpdateVectorResponse);
   rpc DeleteVector(vectordb.core.v1.DeleteVectorRequest) returns (vectordb.core.v1.DeleteVectorResponse);
 
