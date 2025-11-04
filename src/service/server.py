@@ -37,7 +37,7 @@ def serve():
     # Register servicer
     try:
         servicer = VectorDBServicer()
-        vector_service_pb2_grpc.add_VectorDBServiceServicer_to_server(servicer, server)
+        vector_service_pb2_grpc.add_VectorServiceServicer_to_server(servicer, server)
         print(f"✅ VectorDBServicer registered successfully")
     except Exception as e:
         print(f"❌ Failed to register servicer: {e}")

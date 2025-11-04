@@ -29,11 +29,14 @@ class QueryManager:
             UUID of inserted document
         """
         try:
+            created_at_value = (
+                document.created_at.isoformat() if document.created_at else __import__("datetime").datetime.now().isoformat()
+            )
             result = self.collection.data.insert(
                 properties={
                     "content": document.content,
                     "metadata": json.dumps(document.metadata) if document.metadata else "{}",
-                    "created_at": document.created_at
+                    "created_at": created_at_value,
                 }
             )
             print(f"Document inserted with ID: {result}")
@@ -56,11 +59,14 @@ class QueryManager:
             with self.collection.batch.dynamic() as batch:
                 ids = []
                 for doc in documents:
+                    created_at_value = (
+                        doc.created_at.isoformat() if doc.created_at else __import__("datetime").datetime.now().isoformat()
+                    )
                     uuid = batch.add_object(
                         properties={
                             "content": doc.content,
                             "metadata": json.dumps(doc.metadata) if doc.metadata else "{}",
-                            "created_at": doc.created_at
+                            "created_at": created_at_value,
                         }
                     )
                     ids.append(uuid)

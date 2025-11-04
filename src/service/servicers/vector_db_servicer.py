@@ -7,6 +7,7 @@ Implements all RPC methods defined in vector_service.proto
 import grpc
 from datetime import datetime
 from typing import Iterator
+from google.protobuf.timestamp_pb2 import Timestamp
 
 # These will be generated after running generate_proto script
 try:
@@ -28,7 +29,7 @@ except ImportError:
     print("Info: Azure telemetry not available (opencensus not installed)")
 
 
-class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector_service_pb2_grpc else object):
+class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_service_pb2_grpc else object):
     """
     gRPC Servicer implementing Vector Database operations.
     """
@@ -50,8 +51,7 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
 
             doc = Document(
                 content=request.content,
-                metadata=dict(request.metadata) if request.metadata else {},
-                created_at=datetime.fromisoformat(request.created_at) if request.created_at else datetime.now()
+                metadata=dict(request.metadata) if request.metadata else {}
             )
 
             doc_id = query_manager.insert(doc)
@@ -65,11 +65,23 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
                     }
                 )
 
-            return vector_service_pb2.VectorResponse(
-                id=str(doc_id),  # Convert UUID to string
+            # Create protobuf timestamps
+            now = datetime.now()
+            created_timestamp = Timestamp()
+            created_timestamp.FromDatetime(now)
+            updated_timestamp = Timestamp()
+            updated_timestamp.FromDatetime(now)
+
+            # Import the correct message type from Core
+            from ..protos.Core import documents_messages_pb2
+            
+            return documents_messages_pb2.InsertVectorResponse(
+                vector_id=str(doc_id),
+                collection_name=request.collection_name,
                 content=request.content,
                 metadata=request.metadata,
-                created_at=datetime.now().isoformat(),
+                created_at=created_timestamp,
+                updated_at=updated_timestamp,
                 success=True
             )
 
@@ -80,7 +92,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.VectorResponse(
+            from ..protos.Core import documents_messages_pb2
+            return documents_messages_pb2.InsertVectorResponse(
                 success=False,
                 error_message=str(e)
             )
@@ -290,6 +303,9 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
             import time
             start_time = time.time()
 
+            # Import search messages from Core
+            from ..protos.Core import search_messages_pb2
+
             query_manager = QueryManager(
                 self.weaviate_client.client,
                 request.collection_name
@@ -304,8 +320,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
             duration_ms = (time.time() - start_time) * 1000
 
             search_results = [
-                vector_service_pb2.SearchResult(
-                    id=r.id,
+                search_messages_pb2.SearchResult(
+                    vector_id=r.id,
                     content=r.content,
                     score=r.score or 0.0,
                     metadata=r.metadata or {}
@@ -326,10 +342,10 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
                     }
                 )
 
-            return vector_service_pb2.SearchResponse(
+            return search_messages_pb2.SemanticSearchResponse(
                 results=search_results,
                 total_count=len(results),
-                duration_ms=duration_ms,
+                execution_time_ms=int(duration_ms),
                 success=True
             )
 
@@ -337,10 +353,13 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
             if self.telemetry:
                 self.telemetry.track_exception(e, properties={"operation": "SemanticSearch"})
 
+            # Import search messages for error response
+            from ..protos.Core import search_messages_pb2
+
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.SearchResponse(
+            return search_messages_pb2.SemanticSearchResponse(
                 total_count=0,
                 success=False,
                 error_message=str(e)
@@ -349,6 +368,9 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
     def StreamSearch(self, request, context) -> Iterator:
         """Stream search results (for large result sets)."""
         try:
+            # Import search messages from Core
+            from ..protos.Core import search_messages_pb2
+
             query_manager = QueryManager(
                 self.weaviate_client.client,
                 request.collection_name
@@ -362,8 +384,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorDBServiceServicer if vector
 
             # Stream results one by one
             for r in results:
-                yield vector_service_pb2.SearchResult(
-                    id=r.id,
+                yield search_messages_pb2.SearchResult(
+                    vector_id=r.id,
                     content=r.content,
                     score=r.score or 0.0,
                     metadata=r.metadata or {}
