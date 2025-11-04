@@ -101,35 +101,76 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
     def InsertVectorBatch(self, request, context):
         """Insert multiple vectors/documents in batch."""
         try:
+            # Validate we have vectors
+            if not request.vectors:
+                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                context.set_details("No vectors provided in batch request")
+                from ..protos.Core import documents_messages_pb2
+                return documents_messages_pb2.InsertVectorBatchResponse(
+                    total_inserted=0,
+                    total_failed=0,
+                    success=False,
+                    error_message="No vectors provided in batch request"
+                )
+            
+            # Get collection name from first vector (all should be same collection)
+            collection_name = request.vectors[0].collection_name
+            
+            # Create query manager for the collection
             query_manager = QueryManager(
                 self.weaviate_client.client,
-                request.collection_name
+                collection_name
             )
 
+            # Convert gRPC vectors to Document objects
             documents = [
                 Document(
-                    content=doc.content,
-                    metadata=dict(doc.metadata) if doc.metadata else {},
-                    created_at=datetime.fromisoformat(doc.created_at) if doc.created_at else datetime.now()
+                    content=vec.content,
+                    metadata=dict(vec.metadata) if vec.metadata else {},
+                    created_at=datetime.now()
                 )
-                for doc in request.documents
+                for vec in request.vectors
             ]
 
+            # Insert all documents and get IDs
             ids = query_manager.insert_many(documents)
 
+            # Track telemetry
             if self.telemetry:
                 self.telemetry.track_metric("BatchInsertCount", len(ids))
                 self.telemetry.track_event(
                     "VectorBatchInserted",
                     properties={
-                        "collection": request.collection_name,
+                        "collection": collection_name,
                         "count": str(len(ids)),
                         "correlation_id": request.correlation_id
                     }
                 )
 
-            return vector_service_pb2.BatchResponse(
-                ids=[str(id) for id in ids],  # Convert UUIDs to strings
+            # Create response with all inserted vectors
+            from ..protos.Core import documents_messages_pb2
+            now = datetime.now()
+            created_timestamp = Timestamp()
+            created_timestamp.FromDatetime(now)
+            updated_timestamp = Timestamp()
+            updated_timestamp.FromDatetime(now)
+            
+            response_vectors = []
+            for i, (vec, doc_id) in enumerate(zip(request.vectors, ids)):
+                response_vectors.append(
+                    documents_messages_pb2.InsertVectorResponse(
+                        vector_id=str(doc_id),
+                        collection_name=vec.collection_name,
+                        content=vec.content,
+                        metadata=vec.metadata,
+                        created_at=created_timestamp,
+                        updated_at=updated_timestamp,
+                        success=True
+                    )
+                )
+            
+            return documents_messages_pb2.InsertVectorBatchResponse(
+                vectors=response_vectors,
                 total_inserted=len(ids),
                 total_failed=0,
                 success=True
@@ -142,9 +183,10 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.BatchResponse(
+            from ..protos.Core import documents_messages_pb2
+            return documents_messages_pb2.InsertVectorBatchResponse(
                 total_inserted=0,
-                total_failed=len(request.documents),
+                total_failed=len(request.vectors) if request.vectors else 0,
                 success=False,
                 error_message=str(e)
             )
