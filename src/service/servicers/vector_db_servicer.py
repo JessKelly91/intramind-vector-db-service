@@ -314,7 +314,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             results = query_manager.search(
                 request.query,
                 limit=request.limit if request.limit > 0 else 10,
-                return_metadata=request.return_metadata
+                return_metadata=request.return_metadata,
+                min_score=request.min_score if hasattr(request, 'min_score') else 0.0
             )
 
             duration_ms = (time.time() - start_time) * 1000
@@ -379,7 +380,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             results = query_manager.search(
                 request.query,
                 limit=request.limit if request.limit > 0 else 100,
-                return_metadata=request.return_metadata
+                return_metadata=request.return_metadata,
+                min_score=request.min_score if hasattr(request, 'min_score') else 0.0
             )
 
             # Stream results one by one

@@ -80,7 +80,8 @@ class QueryManager:
         self,
         query: str,
         limit: int = 10,
-        return_metadata: bool = True
+        return_metadata: bool = True,
+        min_score: float = 0.0
     ) -> List[SearchResult]:
         """
         Semantic search using vector similarity.
@@ -89,15 +90,18 @@ class QueryManager:
             query: Search query text
             limit: Maximum number of results
             return_metadata: Whether to return metadata
+            min_score: Minimum similarity score (0.0 to 1.0) to filter results
 
         Returns:
             List of search results
         """
         try:
+            from weaviate.classes.query import MetadataQuery
+            
             response = self.collection.query.near_text(
                 query=query,
                 limit=limit,
-                return_metadata=['score'] if return_metadata else []
+                return_metadata=MetadataQuery(certainty=True, distance=True, score=True) if return_metadata else None
             )
 
             results = []
@@ -106,10 +110,30 @@ class QueryManager:
                 metadata_str = obj.properties.get('metadata', '{}')
                 metadata = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
                 
+                # Get similarity score from Weaviate metadata
+                # Priority: certainty (most reliable) > distance > score
+                score = None
+                
+                # Try certainty first (most reliable for text2vec-transformers)
+                if hasattr(obj.metadata, 'certainty') and obj.metadata.certainty is not None and obj.metadata.certainty > 0:
+                    score = obj.metadata.certainty
+                # Fallback to distance (convert to certainty-like score)
+                elif hasattr(obj.metadata, 'distance') and obj.metadata.distance is not None:
+                    # Convert distance to certainty: certainty = 1 - (distance / 2)
+                    # For cosine distance, range is 0-2, so this gives us 0-1
+                    score = max(0.0, 1.0 - (obj.metadata.distance / 2.0))
+                # Last resort: use score field (often returns 0.0 with some vectorizers)
+                elif hasattr(obj.metadata, 'score') and obj.metadata.score is not None and obj.metadata.score > 0:
+                    score = obj.metadata.score
+                
+                # Apply min_score filter
+                if score is not None and score < min_score:
+                    continue  # Skip results below min_score
+                
                 results.append(SearchResult(
                     id=str(obj.uuid),
                     content=obj.properties.get('content', ''),
-                    score=obj.metadata.score if hasattr(obj.metadata, 'score') else None,
+                    score=score,
                     metadata=metadata
                 ))
 
