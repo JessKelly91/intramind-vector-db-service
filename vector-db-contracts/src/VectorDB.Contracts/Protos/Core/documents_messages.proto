@@ -43,7 +43,8 @@ message InsertVectorBatchResponse {
 
 message GetVectorRequest {
   string vector_id = 1;
-  string correlation_id = 2;
+  string collection_name = 2;
+  string correlation_id = 3;
 }
 
 message GetVectorResponse {
@@ -59,7 +60,8 @@ message GetVectorResponse {
 
 message GetVectorBatchRequest {
   repeated string vector_ids = 1;
-  string correlation_id = 2;
+  string collection_name = 2;
+  string correlation_id = 3;
 }
 
 message GetVectorBatchResponse {
@@ -91,7 +93,8 @@ message UpdateVectorResponse {
 
 message DeleteVectorRequest {
   string vector_id = 1;
-  string correlation_id = 2;
+  string collection_name = 2;
+  string correlation_id = 3;
 }
 
 message DeleteVectorResponse {

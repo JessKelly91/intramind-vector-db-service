@@ -29,9 +29,17 @@ class QueryManager:
             UUID of inserted document
         """
         try:
-            created_at_value = (
-                document.created_at.isoformat() if document.created_at else __import__("datetime").datetime.now().isoformat()
-            )
+            # Format timestamp as RFC3339 (required by Weaviate)
+            if document.created_at:
+                created_at_value = document.created_at.isoformat()
+                # Add 'Z' suffix if no timezone info present
+                if not created_at_value.endswith('Z') and '+' not in created_at_value:
+                    created_at_value += 'Z'
+            else:
+                # Use UTC timezone-aware datetime
+                from datetime import datetime, timezone
+                created_at_value = datetime.now(timezone.utc).isoformat()
+            
             result = self.collection.data.insert(
                 properties={
                     "content": document.content,
@@ -56,12 +64,21 @@ class QueryManager:
             List of UUIDs for inserted documents
         """
         try:
+            from datetime import datetime, timezone
+            
             with self.collection.batch.dynamic() as batch:
                 ids = []
                 for doc in documents:
-                    created_at_value = (
-                        doc.created_at.isoformat() if doc.created_at else __import__("datetime").datetime.now().isoformat()
-                    )
+                    # Format timestamp as RFC3339 (required by Weaviate)
+                    if doc.created_at:
+                        created_at_value = doc.created_at.isoformat()
+                        # Add 'Z' suffix if no timezone info present
+                        if not created_at_value.endswith('Z') and '+' not in created_at_value:
+                            created_at_value += 'Z'
+                    else:
+                        # Use UTC timezone-aware datetime
+                        created_at_value = datetime.now(timezone.utc).isoformat()
+                    
                     uuid = batch.add_object(
                         properties={
                             "content": doc.content,

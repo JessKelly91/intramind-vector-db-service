@@ -194,6 +194,9 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
     def GetVector(self, request, context):
         """Get a vector/document by ID."""
         try:
+            # Import the correct message type from Core
+            from ..protos.Core import documents_messages_pb2
+            
             query_manager = QueryManager(
                 self.weaviate_client.client,
                 request.collection_name
@@ -204,16 +207,29 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             if not doc:
                 context.set_code(grpc.StatusCode.NOT_FOUND)
                 context.set_details(f"Vector {request.vector_id} not found")
-                return vector_service_pb2.VectorResponse(
+                return documents_messages_pb2.GetVectorResponse(
                     success=False,
                     error_message="Vector not found"
                 )
 
-            return vector_service_pb2.VectorResponse(
-                id=doc.id,
+            # Create timestamps
+            created_timestamp = Timestamp()
+            if doc.created_at:
+                if isinstance(doc.created_at, str):
+                    created_timestamp.FromJsonString(doc.created_at)
+                else:
+                    created_timestamp.FromDatetime(doc.created_at)
+            
+            updated_timestamp = Timestamp()
+            updated_timestamp.FromDatetime(datetime.now())
+
+            return documents_messages_pb2.GetVectorResponse(
+                vector_id=doc.id,
+                collection_name=request.collection_name,
                 content=doc.content,
                 metadata=doc.metadata or {},
-                created_at=doc.created_at.isoformat() if doc.created_at else "",
+                created_at=created_timestamp,
+                updated_at=updated_timestamp,
                 success=True
             )
 
@@ -224,7 +240,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.VectorResponse(
+            from ..protos.Core import documents_messages_pb2
+            return documents_messages_pb2.GetVectorResponse(
                 success=False,
                 error_message=str(e)
             )
@@ -249,7 +266,10 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
                     }
                 )
 
-            return vector_service_pb2.DeleteResponse(
+            # Import the correct message type from Core
+            from ..protos.Core import documents_messages_pb2
+            
+            return documents_messages_pb2.DeleteVectorResponse(
                 success=True,
                 message=f"Vector {request.vector_id} deleted successfully"
             )
@@ -261,7 +281,10 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.DeleteResponse(
+            # Import the correct message type from Core
+            from ..protos.Core import documents_messages_pb2
+            
+            return documents_messages_pb2.DeleteVectorResponse(
                 success=False,
                 error_message=str(e)
             )
@@ -269,6 +292,9 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
     def UpdateVector(self, request, context):
         """Update a vector/document."""
         try:
+            # Import the correct message type from Core
+            from ..protos.Core import documents_messages_pb2
+            
             query_manager = QueryManager(
                 self.weaviate_client.client,
                 request.collection_name
@@ -291,7 +317,7 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             if not updated_doc:
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details("Document updated but could not be retrieved")
-                return vector_service_pb2.VectorResponse(
+                return documents_messages_pb2.UpdateVectorResponse(
                     success=False,
                     error_message="Document updated but could not be retrieved"
                 )
@@ -306,11 +332,24 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
                     }
                 )
 
-            return vector_service_pb2.VectorResponse(
-                id=updated_doc.id,
+            # Create timestamps
+            created_timestamp = Timestamp()
+            if updated_doc.created_at:
+                if isinstance(updated_doc.created_at, str):
+                    created_timestamp.FromJsonString(updated_doc.created_at)
+                else:
+                    created_timestamp.FromDatetime(updated_doc.created_at)
+            
+            updated_timestamp = Timestamp()
+            updated_timestamp.FromDatetime(datetime.now())
+
+            return documents_messages_pb2.UpdateVectorResponse(
+                vector_id=updated_doc.id,
+                collection_name=request.collection_name,
                 content=updated_doc.content,
                 metadata=updated_doc.metadata or {},
-                created_at=updated_doc.created_at.isoformat() if updated_doc.created_at else "",
+                created_at=created_timestamp,
+                updated_at=updated_timestamp,
                 success=True
             )
 
@@ -322,7 +361,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(str(e))
 
-            return vector_service_pb2.VectorResponse(
+            from ..protos.Core import documents_messages_pb2
+            return documents_messages_pb2.UpdateVectorResponse(
                 success=False,
                 error_message=str(e)
             )
@@ -334,7 +374,8 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.VectorResponse(
+            from ..protos.Core import documents_messages_pb2
+            return documents_messages_pb2.UpdateVectorResponse(
                 success=False,
                 error_message=str(e)
             )
@@ -462,11 +503,19 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
                     }
                 )
 
-            return vector_service_pb2.CollectionResponse(
-                name=request.collection_name,
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
+            # Create timestamp
+            now = datetime.now()
+            created_timestamp = Timestamp()
+            created_timestamp.FromDatetime(now)
+            
+            return collections_messages_pb2.CreateCollectionResponse(
+                collection_name=request.collection_name,
                 description=request.description,
-                document_count=0,
-                vectorizer=request.vectorizer,
+                vector_count=0,
+                created_at=created_timestamp,
                 success=True
             )
 
@@ -477,7 +526,13 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.CollectionResponse(
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
+            return collections_messages_pb2.CreateCollectionResponse(
+                collection_name="",
+                description="",
+                vector_count=0,
                 success=False,
                 error_message=str(e)
             )
@@ -485,12 +540,43 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
     def ListCollections(self, request, context):
         """List all collections."""
         try:
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
             collection_manager = CollectionManager(self.weaviate_client.client)
-            collections = collection_manager.list_collections()
+            collection_names = collection_manager.list_collections()
+            
+            # Create CollectionInfo objects for each collection
+            collection_infos = []
+            for name in collection_names:
+                # Get collection details
+                try:
+                    details = collection_manager.get_collection(name)
+                    
+                    # Create timestamp
+                    created_timestamp = Timestamp()
+                    if details.get('created_at'):
+                        created_timestamp.FromDatetime(details['created_at'])
+                    
+                    collection_info = collections_messages_pb2.CollectionInfo(
+                        collection_name=name,
+                        description=details.get('description', ''),
+                        vector_count=details.get('vector_count', 0),
+                        created_at=created_timestamp
+                    )
+                    collection_infos.append(collection_info)
+                except:
+                    # If we can't get details, just add basic info
+                    collection_info = collections_messages_pb2.CollectionInfo(
+                        collection_name=name,
+                        description='',
+                        vector_count=0
+                    )
+                    collection_infos.append(collection_info)
 
-            return vector_service_pb2.CollectionsResponse(
-                collection_names=collections,
-                total_count=len(collections),
+            return collections_messages_pb2.ListCollectionsResponse(
+                collections=collection_infos,
+                total_count=len(collection_infos),
                 success=True
             )
 
@@ -501,7 +587,11 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.CollectionsResponse(
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
+            return collections_messages_pb2.ListCollectionsResponse(
+                collections=[],
                 total_count=0,
                 success=False,
                 error_message=str(e)
@@ -512,10 +602,16 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
         try:
             collection_manager = CollectionManager(self.weaviate_client.client)
 
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
             if not collection_manager.collection_exists(request.collection_name):
                 context.set_code(grpc.StatusCode.NOT_FOUND)
                 context.set_details(f"Collection {request.collection_name} not found")
-                return vector_service_pb2.CollectionResponse(
+                return collections_messages_pb2.GetCollectionResponse(
+                    collection_name="",
+                    description="",
+                    vector_count=0,
                     success=False,
                     error_message="Collection not found"
                 )
@@ -525,10 +621,17 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
                 request.collection_name
             )
             count = query_manager.count()
+            
+            # Create timestamp
+            now = datetime.now()
+            created_timestamp = Timestamp()
+            created_timestamp.FromDatetime(now)
 
-            return vector_service_pb2.CollectionResponse(
-                name=request.collection_name,
-                document_count=count,
+            return collections_messages_pb2.GetCollectionResponse(
+                collection_name=request.collection_name,
+                description="",
+                vector_count=count,
+                created_at=created_timestamp,
                 success=True
             )
 
@@ -539,7 +642,13 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.CollectionResponse(
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
+            return collections_messages_pb2.GetCollectionResponse(
+                collection_name="",
+                description="",
+                vector_count=0,
                 success=False,
                 error_message=str(e)
             )
@@ -559,7 +668,10 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
                     }
                 )
 
-            return vector_service_pb2.DeleteResponse(
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
+            return collections_messages_pb2.DeleteCollectionResponse(
                 success=True,
                 message=f"Collection {request.collection_name} deleted successfully"
             )
@@ -571,7 +683,10 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
 
-            return vector_service_pb2.DeleteResponse(
+            # Import the correct message type from Core
+            from ..protos.Core import collections_messages_pb2
+            
+            return collections_messages_pb2.DeleteCollectionResponse(
                 success=False,
                 error_message=str(e)
             )
