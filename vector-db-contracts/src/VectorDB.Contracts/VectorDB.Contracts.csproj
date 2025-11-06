@@ -26,6 +26,7 @@
     <PackageProjectUrl>https://github.com/JessKelly91/ai-vector-db-practice</PackageProjectUrl>
     <RepositoryUrl>https://github.com/JessKelly91/ai-vector-db-practice</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <!-- gRPC and Protocol Buffer Dependencies -->
@@ -49,5 +50,6 @@
   <ItemGroup>
     <None Include="Protos\*.proto" Pack="true" PackagePath="protos\" />
     <None Include="Protos\Core\*.proto" Pack="true" PackagePath="protos\Core\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>
