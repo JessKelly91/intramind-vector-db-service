@@ -73,6 +73,15 @@ python -m grpc_tools.protoc \
 
 if [ $? -eq 0 ]; then
     echo ""
+    echo "✅ Proto files generated successfully"
+    echo ""
+    echo "📝 Fixing Python imports to use relative imports..."
+
+    # Fix imports in generated files to use relative imports
+    # Change "from Core import" to "from .Core import"
+    find "$OUTPUT_DIR" -name "*_pb2*.py" -type f -exec sed -i 's/^from Core import/from .Core import/g' {} \;
+
+    echo ""
     echo "Success! Generated files:"
     echo "  - src/service/protos/Core/*_pb2.py"
     echo "  - src/service/protos/Core/*_pb2_grpc.py"
