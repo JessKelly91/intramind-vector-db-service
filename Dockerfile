@@ -22,9 +22,19 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code
+# Copy the proto definitions from vector-db-contracts submodule
+COPY vector-db-contracts/src/VectorDB.Contracts/Protos/ ./vector-db-contracts/src/VectorDB.Contracts/Protos/
+
+# Copy the proto generation script
+COPY scripts/generate_proto.sh ./scripts/
+
+# Copy the application code (before proto generation to create directories)
 COPY src/ ./src/
 COPY config/ ./config/
+
+# Generate Protocol Buffer files
+RUN chmod +x ./scripts/generate_proto.sh && \
+    bash ./scripts/generate_proto.sh
 
 # Expose gRPC port
 EXPOSE 50052
