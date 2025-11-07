@@ -38,9 +38,13 @@ docs/
 .env.local
 .env.*.local
 
-# Scripts
+# Scripts (but keep proto generation script for build)
 scripts/
+!scripts/generate_proto.sh
 
-# Contracts (not needed at runtime)
+# Contracts (keep proto definitions for build-time code generation)
 vector-db-contracts/
+!vector-db-contracts/src/
+!vector-db-contracts/src/VectorDB.Contracts/
+!vector-db-contracts/src/VectorDB.Contracts/Protos/
 
