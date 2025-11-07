@@ -34,6 +34,7 @@ class CollectionManager:
         # Use environment variable for default vectorizer if not specified
         if vectorizer is None:
             vectorizer = os.getenv("WEAVIATE_VECTORIZER", "text2vec-transformers")
+            print(f"[CollectionManager] Using vectorizer: {vectorizer} (from env: {os.getenv('WEAVIATE_VECTORIZER', 'NOT_SET')})")
         try:
             # Configure vectorizer based on the specified type
             if vectorizer == "text2vec-transformers":
