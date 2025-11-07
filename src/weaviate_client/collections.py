@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any
+import os
 from weaviate.classes.config import Configure, Property, DataType
 from .models import Document, SearchResult
 
@@ -19,7 +20,7 @@ class CollectionManager:
         self,
         name: str,
         description: str = "",
-        vectorizer: str = "text2vec-transformers"
+        vectorizer: str = None
     ):
         """
         Create a new collection in Weaviate.
@@ -27,9 +28,12 @@ class CollectionManager:
         Args:
             name: Collection name
             description: Collection description
-            vectorizer: Vectorizer to use (default: text2vec-transformers)
+            vectorizer: Vectorizer to use (default: from WEAVIATE_VECTORIZER env var or 'text2vec-transformers')
                        Options: 'text2vec-transformers', 'text2vec-openai', 'none'
         """
+        # Use environment variable for default vectorizer if not specified
+        if vectorizer is None:
+            vectorizer = os.getenv("WEAVIATE_VECTORIZER", "text2vec-transformers")
         try:
             # Configure vectorizer based on the specified type
             if vectorizer == "text2vec-transformers":
