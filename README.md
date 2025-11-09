@@ -66,6 +66,10 @@ Edit `.env` with your local configuration:
 # Environment
 ENVIRONMENT=Local
 
+# Vectorizer Configuration
+DEFAULT_VECTORIZER=text2vec-transformers  # Options: text2vec-transformers, text2vec-openai, none
+VECTORIZER_ENABLED=true  # Set to false to disable vectorizers (uses 'none')
+
 # Weaviate Configuration
 WEAVIATE_URL=http://localhost:8080
 WEAVIATE_KEY=  # Leave empty for local docker-compose (anonymous access enabled)
@@ -225,9 +229,12 @@ The project uses a **production-like two-tier configuration system** following [
 - Required variables:
   - `WEAVIATE_URL`
   - `WEAVIATE_KEY`
-  - `OPENAI_API_KEY`
   - `ENVIRONMENT`
-  - `APPINSIGHTS_CONNECTION_STRING` (optional)
+  - `DEFAULT_VECTORIZER` (optional - defaults based on ENVIRONMENT)
+  - `VECTORIZER_ENABLED` (optional - set to 'false' in CI)
+- Optional variables:
+  - `OPENAI_API_KEY` (only if using OpenAI embeddings)
+  - `APPINSIGHTS_CONNECTION_STRING` (telemetry)
 
 ### Accessing Configuration
 

@@ -62,6 +62,8 @@ class Settings:
             'ENVIRONMENT': 'Environment.Value',
             'APPLICATION_ID': 'Environment.ApplicationId',
             'GRPC_SERVER_PORT': 'GrpcServer.Port',
+            'DEFAULT_VECTORIZER': 'Vectorizer.Default',
+            'VECTORIZER_ENABLED': 'Vectorizer.Enabled',
         }
 
         for env_var, setting_path in env_mappings.items():

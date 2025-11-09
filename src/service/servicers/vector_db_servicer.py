@@ -33,6 +33,34 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
     """
     gRPC Servicer implementing Vector Database operations.
     """
+    
+    def _get_default_vectorizer(self) -> str:
+        """
+        Get the default vectorizer based on environment configuration.
+        
+        Returns:
+            str: Vectorizer name ("none", "text2vec-transformers", etc.)
+        """
+        from ...weaviate_client.config import get_settings
+        settings = get_settings()
+        
+        # Check if vectorizer is explicitly disabled
+        vectorizer_enabled = settings.get('Vectorizer.Enabled', 'true').lower()
+        if vectorizer_enabled == 'false':
+            return 'none'
+        
+        # Check for explicit default vectorizer setting
+        default_vectorizer = settings.get('Vectorizer.Default')
+        if default_vectorizer:
+            return default_vectorizer
+        
+        # Check if running in CI environment
+        environment = settings.get('Environment.Value', '').upper()
+        if environment == 'CI':
+            return 'none'
+        
+        # Default to transformers for local development
+        return 'text2vec-transformers'
 
     def __init__(self):
         """Initialize the servicer with Weaviate connection."""
@@ -488,10 +516,13 @@ class VectorDBServicer(vector_service_pb2_grpc.VectorServiceServicer if vector_s
         try:
             collection_manager = CollectionManager(self.weaviate_client.client)
 
+            # Determine vectorizer to use
+            vectorizer = request.vectorizer if request.vectorizer else self._get_default_vectorizer()
+
             collection_manager.create_collection(
                 name=request.collection_name,
                 description=request.description,
-                vectorizer=request.vectorizer if request.vectorizer else "text2vec-transformers"
+                vectorizer=vectorizer
             )
 
             if self.telemetry:
