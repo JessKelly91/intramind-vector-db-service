@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings so they run inside Linux containers.
+# Without this, core.autocrlf=true checks them out as CRLF on Windows and the
+# Docker build fails (e.g. `bash: $'\r': command not found` in generate_proto.sh).
+*.sh text eol=lf
